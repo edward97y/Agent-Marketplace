@@ -1,2 +1,5 @@
 UML Diagram
 .venv
+alembic.ini
+.env
+*/__pycache__/
