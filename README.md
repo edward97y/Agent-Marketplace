@@ -59,6 +59,36 @@ To stop and remove the container later, run:
 docker compose -f docker/docker-compose.yml down
 ```
 
+## Database Migrations with Alembic
+
+Alembic is already included in the project dependencies. After your PostgreSQL container is running, you can apply the existing migrations with:
+
+```bash
+uv run alembic upgrade head
+```
+
+If you change SQLAlchemy models and want to generate a new migration, run:
+
+```bash
+uv run alembic revision --autogenerate -m "describe your change"
+```
+
+This creates a new revision file under the migrations/versions folder. Review it, then apply it with:
+
+```bash
+uv run alembic upgrade head
+```
+
+Useful Alembic commands:
+
+```bash
+uv run alembic current
+uv run alembic history
+uv run alembic downgrade -1
+```
+
+Use downgrade -1 if you want to revert the most recent migration.
+
 ## Running the Application
 
 The repository currently includes the dependency setup and Docker database service. The application entrypoint is not yet fully defined in src/main.py, so once you add your main script, you can run it with:
