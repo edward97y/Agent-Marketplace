@@ -14,6 +14,7 @@ from .agent_run import AgentRun
 from .tool_call import ToolCall
 from .evaluation import Evaluation
 from .event_log import EventLog
+from .company_schema_mapping import CompanySchemaMapping
 
 __all__ = [
     "Company",
@@ -32,4 +33,5 @@ __all__ = [
     "ToolCall",
     "Evaluation",
     "EventLog",
+    "CompanySchemaMapping",
 ]
