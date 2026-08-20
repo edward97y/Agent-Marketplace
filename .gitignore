@@ -3,3 +3,4 @@ UML Diagram
 alembic.ini
 .env
 __pycache__/
+src/test

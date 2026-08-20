@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from models.agent import Agent
     from models.knowledge_base import KnowledgeBase
     from models.conversation import Conversation
+    from models.company_schema_mapping import CompanySchemaMapping
 
 
 class Company(Base):
@@ -55,3 +56,6 @@ class Company(Base):
     conversations: Mapped[list["Conversation"]] = relationship(
         back_populates="company"
     )
+    schema_mappings: Mapped[list["CompanySchemaMapping"]] = relationship(
+    back_populates="company"
+)
