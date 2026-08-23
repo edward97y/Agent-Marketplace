@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from helpers import get_settings,get_logger
-
+from contextlib import asynccontextmanager
 settings = get_settings()
 logger = get_logger(__name__)
 
@@ -18,7 +18,7 @@ async_session = sessionmaker(
     expire_on_commit=False
 )
 
-
+@asynccontextmanager
 async def get_db():
     """Get a database session."""
     async with async_session() as session:
