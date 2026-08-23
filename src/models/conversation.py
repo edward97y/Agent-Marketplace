@@ -1,4 +1,4 @@
-from src.db import Base
+from db import Base
 from uuid import uuid4, UUID
 from datetime import datetime
 

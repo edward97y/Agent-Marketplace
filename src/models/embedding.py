@@ -1,7 +1,7 @@
-from src.db import Base
+from db import Base
 from uuid import uuid4, UUID
 from datetime import datetime
-from ..helpers import get_settings
+from helpers import get_settings
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import func, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
