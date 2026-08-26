@@ -33,3 +33,11 @@ class RunStatus(str, Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+
+class FilterOperator(str,Enum):
+    EQ = "eq"
+    CONTAINS = "contains"
+    LT = "lt"
+    GT = "gt"
+    LTE = "lte"
+    GTE = "gte"
