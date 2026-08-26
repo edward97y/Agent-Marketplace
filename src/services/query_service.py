@@ -1,9 +1,10 @@
 from .base_service import Base
 from uuid import UUID
-from models.enums import EntityType
+from models.enums import FilterOperator
 from .schema_mapping_service import SchemaMappingService
 from sqlalchemy import select,MetaData, Table,func
 from sqlalchemy.exc import SQLAlchemyError
+from models.schemas.query_schema import Query
 class QueryService(Base):
     def __init__(self,db,company_db):
         super().__init__()
@@ -13,8 +14,7 @@ class QueryService(Base):
     async def search(
         self,
         company_id: UUID,
-        entity: EntityType,
-        filters: dict | None = None
+        query:Query
     ):
 
         self.logger.info("Start query service")
@@ -23,7 +23,7 @@ class QueryService(Base):
 
         entity_mapping = await self.mapping.get_entity_mapping(
             company_id=company_id,
-            entity=entity
+            entity=query.entity
         )
 
         table_name = entity_mapping["table"]
@@ -50,12 +50,12 @@ class QueryService(Base):
 
 
             stmt = select(table)
-            if filters:
-                for filter_item in filters:
+            if query.filters:
+                for filter_item in query.filters:
 
-                    field = filter_item["field"]
-                    operator = filter_item["operator"]
-                    value = filter_item["value"]
+                    field = filter_item.field
+                    operator = filter_item.operator
+                    value = filter_item.value
                     field_mapping = fields.get(field)
 
                     if not field_mapping:
@@ -69,7 +69,7 @@ class QueryService(Base):
                     column = table.c[column_name]
                     
 
-                    if operator == "eq":
+                    if operator == FilterOperator.EQ:
 
                         if field_type == "string":
                              stmt = stmt.where(
@@ -79,26 +79,26 @@ class QueryService(Base):
                              stmt = stmt.where(
                                  column == value
                              )
-                    elif operator == "contains":
+                    elif operator == FilterOperator.CONTAINS:
 
                         if field_type != "string":
                             raise ValueError(
                                 f"Operator 'contains' can only be used with strings"
                             )
-                    
+
                         stmt = stmt.where(
                             column.ilike(f"%{value}%")
                         )
-                    elif operator == "lt":
+                    elif operator == FilterOperator.LT:
                         stmt = stmt.where(column < value)
 
-                    elif operator == "gt":
+                    elif operator == FilterOperator.GT:
                         stmt = stmt.where(column > value)
 
-                    elif operator == "lte":
+                    elif operator == FilterOperator.LTE:
                         stmt = stmt.where(column <= value)
 
-                    elif operator == "gte":
+                    elif operator == FilterOperator.GTE:
                         stmt = stmt.where(column >= value)
     
 

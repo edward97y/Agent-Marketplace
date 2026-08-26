@@ -23,6 +23,18 @@ class SchemaMappingService(Base):
         if result is None:
             raise ValueError(f"Entity '{entity.value}' is not found")
         return result
+    
+    async def get_entity_fields(
+    self,
+    company_id: UUID,
+    entity: EntityType
+    ):
+        mapping = await self.get_entity_mapping(
+            company_id=company_id,
+            entity=entity
+        )
+
+        return mapping["fields"]
 
         
         
