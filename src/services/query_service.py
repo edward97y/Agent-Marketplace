@@ -11,6 +11,29 @@ class QueryService(Base):
         self.mapping=SchemaMappingService(db=db)
         self.company_db=company_db
 
+    def _normalize_value(self, value, field_type):
+        if field_type == "integer":
+            return int(value)
+
+        if field_type == "number":
+            return float(value)
+
+        if field_type == "boolean":
+            if isinstance(value, bool):
+                return value
+
+            if str(value).lower() in {"true", "1", "yes"}:
+                return True
+
+            if str(value).lower() in {"false", "0", "no"}:
+                return False
+
+            raise ValueError(f"Invalid boolean value: {value}")
+
+        if field_type == "string":
+            return str(value)
+
+        return value
     async def search(
         self,
         company_id: UUID,
@@ -26,6 +49,7 @@ class QueryService(Base):
             entity=query.entity
         )
 
+       
         table_name = entity_mapping["table"]
         fields = entity_mapping["fields"]
 
@@ -67,7 +91,11 @@ class QueryService(Base):
                     field_type = field_mapping["type"]
 
                     column = table.c[column_name]
-                    
+
+                    value = self._normalize_value(
+                            filter_item.value,
+                            field_type
+                        )
 
                     if operator == FilterOperator.EQ:
 
@@ -106,7 +134,7 @@ class QueryService(Base):
 
 
             result = await self.company_db.execute(stmt)
-
+            self.logger.info("finish searching function successfully")
             return [dict(row) for row in result.mappings().all()]
         
         except SQLAlchemyError:
