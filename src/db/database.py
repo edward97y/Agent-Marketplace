@@ -18,9 +18,8 @@ async_session = sessionmaker(
     expire_on_commit=False
 )
 
-@asynccontextmanager
 async def get_db():
-    """Get a database session."""
+    """Get a database session for FastAPI dependency injection."""
     async with async_session() as session:
         yield session
 

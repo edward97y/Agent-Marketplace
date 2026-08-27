@@ -1,4 +1,4 @@
-from db import Base
+from db.base  import Base
 from uuid import uuid4, UUID
 from datetime import datetime
 
@@ -23,7 +23,8 @@ class CompanySchemaMapping(Base):
     company_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("companies.id"),
-        nullable=False
+        nullable=False,
+        unique=True
     )
 
     mapping: Mapped[dict] = mapped_column(

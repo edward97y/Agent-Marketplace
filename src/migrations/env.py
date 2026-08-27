@@ -18,15 +18,15 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
+
 import sys
 from pathlib import Path
 
-sys.path.append(
-    str(Path(__file__).resolve().parents[1])
-)
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+from db.base import Base
+from models import *
 
-from src.db.base import Base  
-from src.models import *
+target_metadata = Base.metadata
 
 target_metadata = Base.metadata
 
