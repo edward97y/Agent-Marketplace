@@ -1,4 +1,4 @@
-from db import Base
+from db.base  import Base
 from uuid import uuid4, UUID
 from datetime import datetime
 
@@ -28,7 +28,8 @@ class AgentRun(Base):
     conversation_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("conversations.id"),
-        nullable=False
+        nullable=False,
+        unique=True
     )
 
     agent_id: Mapped[UUID] = mapped_column(

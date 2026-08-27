@@ -5,3 +5,4 @@ class EntityType(Enum):
     CUSTOMER="customer"
     ORDER="order"
     APPOINTMENT="appointment"
+
