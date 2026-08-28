@@ -4,7 +4,7 @@ from models.schemas.agent_routes_schema import (CreateAgent,GetAllAgent,
                                           DeleteAllAgent,DeleteAgent)
 from db.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
-from services.agent_service import AgentService
+from services.db_services.agent_service import AgentService
 
 def get_agent_service(db:AsyncSession=Depends(get_db)) -> AgentService:
      return AgentService(db=db)
