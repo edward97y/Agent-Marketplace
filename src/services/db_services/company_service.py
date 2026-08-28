@@ -1,4 +1,4 @@
-from .base_service import Base
+from ..base_service import Base
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.company import Company
 from sqlalchemy.exc import SQLAlchemyError

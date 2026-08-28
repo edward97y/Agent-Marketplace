@@ -1,4 +1,4 @@
-from .base_service import Base
+from ..base_service import Base
 from models.schemas.agent_routes_schema import (CreateAgent,
                                           GetAgent,GetAllAgent,
                                           DeleteAgent,DeleteAllAgent)

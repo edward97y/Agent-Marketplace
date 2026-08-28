@@ -1,7 +1,7 @@
 from fastapi import APIRouter,status,Depends,HTTPException
 from db.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
-from services.company_service import CompanyService
+from services.db_services.company_service import CompanyService
 from models.schemas.company_routes_schema import (AddCompany,
                                           GetCompany,DeleteCompany,CompanyResponse)
 

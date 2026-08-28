@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from helpers.config import get_settings
-from routes import agent_router,company_router,company_mapping_router
+from routes import (agent_router,company_router,
+                    company_mapping_router,user_router)
 
 async def lifespan(app:FastAPI):
     settings=get_settings()
@@ -11,7 +12,8 @@ app=FastAPI(lifespan=lifespan)
 
 routers=[agent_router,
          company_router,
-         company_mapping_router
+         company_mapping_router,
+         user_router
          ]
 
 for router in routers:
