@@ -58,4 +58,10 @@ class Company(Base):
     )
     schema_mappings: Mapped[list["CompanySchemaMapping"]] = relationship(
     back_populates="company"
-)
+    
+    )
+    db_config = relationship(
+        "CompanyDBConfig",
+        back_populates="company",
+        uselist=False
+    )

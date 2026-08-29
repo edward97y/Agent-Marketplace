@@ -1,6 +1,6 @@
 from pydantic import BaseModel,Field
 from typing import Any
-from models.enums import EntityType,FilterOperator,ProductFilter
+from models.enums import EntityType,FilterOperator
 
 class Filter(BaseModel):
     field:str=Field(description=(

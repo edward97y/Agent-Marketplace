@@ -14,7 +14,7 @@ class AgentService(Base):
         self.db=db
 
     async def create_agent(self,data:CreateAgent)->Agent:
-        self.logger.info("start create agent service")
+        self.logger.info("Starting agent creation")
         agent=Agent(company_id=data.company_id,name=data.name
                     ,description=data.description,
                     type=data.type,is_active=data.is_active)
@@ -22,20 +22,20 @@ class AgentService(Base):
             self.db.add(agent)
             await self.db.commit()
             await self.db.refresh(agent)
-            self.logger.info("finish adding to data base")
+            self.logger.info("Agent persisted to database successfully")
             return agent
-        
+
         except SQLAlchemyError:
             await self.db.rollback()
-            self.logger.error("error while creating the agent",exc_info=True)
+            self.logger.error("Failed to create agent due to a database error", exc_info=True)
             raise
-        
+
         except Exception:
-            self.logger.error("error while creating the agent",exc_info=True)
+            self.logger.error("Failed to create agent", exc_info=True)
             raise
 
     async def get_agent_info_by_id(self,info:GetAgent)->Agent| None:
-            self.logger.info("start get agent info service")
+            self.logger.info("Retrieving agent information")
             
             try:
 
@@ -46,15 +46,15 @@ class AgentService(Base):
                return result.scalar_one_or_none()
             
             except SQLAlchemyError:
-                self.logger.error("error while getting the agent info ",exc_info=True)
+                self.logger.error("Failed to retrieve agent information due to a database error", exc_info=True)
                 raise
-            
+
             except Exception:
-                self.logger.error("error while getting the agent info ",exc_info=True)
+                self.logger.error("Failed to retrieve agent information", exc_info=True)
                 raise
 
     async def get_all_agent_info_by_company_id(self,info:GetAllAgent)->list[Agent]:
-                self.logger.info("start get all agent info service")
+                self.logger.info("Retrieving all agents for company")
                 
                 try:
     
@@ -64,16 +64,16 @@ class AgentService(Base):
                    return result.scalars().all()
                 
                 except SQLAlchemyError:
-                    self.logger.error("error while getting all company agent info ",exc_info=True)
+                    self.logger.error("Failed to retrieve company agents due to a database error", exc_info=True)
                     raise
-                
+
                 except Exception:
-                    self.logger.error("error while getting all company agent info ",exc_info=True)
+                    self.logger.error("Failed to retrieve company agents", exc_info=True)
                     raise
 
 
     async def delete_agent_by_id(self,info:DeleteAgent):
-                    self.logger.info("start delete agent by id service")
+                    self.logger.info("Deleting agent by ID")
                     
                     try:
         
@@ -89,15 +89,15 @@ class AgentService(Base):
                     
                     except SQLAlchemyError:
                         await self.db.rollback()
-                        self.logger.error("error while deleting agent info ",exc_info=True)
+                        self.logger.error("Failed to delete agent due to a database error", exc_info=True)
                         raise
-                    
+
                     except Exception:
-                        self.logger.error("error while deleting agent info ",exc_info=True)
+                        self.logger.error("Failed to delete agent", exc_info=True)
                         raise
     
     async def delete_all_agent_by_company_id(self,info:DeleteAllAgent):
-                    self.logger.info("start delete agent by id service")
+                    self.logger.info("Deleting all agents for company")
                     
                     try:
         
@@ -109,17 +109,15 @@ class AgentService(Base):
                             return False
 
                        await self.db.commit()
-                       self.logger.info(
-                        f"deleted {deleted_count} agents successfully"
-                        )
+                       self.logger.info(f"Deleted {deleted_count} agents successfully")
                        return deleted_count
-                    
+
                     except SQLAlchemyError:
                         await self.db.rollback()
-                        self.logger.error("error while deleting all company agent info ",exc_info=True)
+                        self.logger.error("Failed to delete company agents due to a database error", exc_info=True)
                         raise
-                    
+
                     except Exception:
-                        self.logger.error("error while deleting all company agent info ",exc_info=True)
+                        self.logger.error("Failed to delete company agents", exc_info=True)
                         raise
          

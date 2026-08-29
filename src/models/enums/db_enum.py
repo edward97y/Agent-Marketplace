@@ -7,7 +7,11 @@ class PlanType(str, Enum):
     PRO = "pro"
     ENTERPRISE = "enterprise"
 
-
+class DatabaseType(str,Enum):
+    POSTGRES = "postgres"
+    MYSQL = "mysql"
+    MONGODB = "mongodb"
+    SQLSERVER = "sqlserver"
 class UserRole(str, Enum):
     OWNER = "owner"
     ADMIN = "admin"
