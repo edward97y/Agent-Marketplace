@@ -13,9 +13,9 @@ class UserService(Base):
         self.db=db
 
     async def create_user(self,data:AddUser)->User:
-        self.logger.info("start create user service")
+        self.logger.info("Starting user creation")
 
-        self.logger.info("start hashing password")
+        self.logger.info("Hashing user password")
         password=plan_to_hash_password(password=data.password)
         user=User(company_id=data.company_id,role=data.role
                    ,email=data.email,password_hash=password)
@@ -23,20 +23,20 @@ class UserService(Base):
             self.db.add(user)
             await self.db.commit()
             await self.db.refresh(user)
-            self.logger.info("finish adding to data base")
+            self.logger.info("User persisted to database successfully")
             return user
-        
+
         except SQLAlchemyError:
             await self.db.rollback()
-            self.logger.error("error while creating the user",exc_info=True)
+            self.logger.error("Failed to create user due to a database error", exc_info=True)
             raise
-        
+
         except Exception:
-            self.logger.error("error while creating the user",exc_info=True)
+            self.logger.error("Failed to create user", exc_info=True)
             raise
 
     async def get_user_info_by_id(self,info:GetUser)->User| None:
-            self.logger.info("start get user info service")
+            self.logger.info("Retrieving user information")
             
             try:
 
@@ -47,15 +47,15 @@ class UserService(Base):
                return result.scalar_one_or_none()
             
             except SQLAlchemyError:
-                self.logger.error("error while getting the user info ",exc_info=True)
+                self.logger.error("Failed to retrieve user information due to a database error", exc_info=True)
                 raise
-            
+
             except Exception:
-                self.logger.error("error while getting the user info ",exc_info=True)
+                self.logger.error("Failed to retrieve user information", exc_info=True)
                 raise
 
     async def get_all_user_info_by_company_id(self,info:GetAllUser)->list[User]:
-                self.logger.info("start get all user info service")
+                self.logger.info("Retrieving all users for company")
                 
                 try:
     
@@ -65,16 +65,16 @@ class UserService(Base):
                    return result.scalars().all()
                 
                 except SQLAlchemyError:
-                    self.logger.error("error while getting all company user info ",exc_info=True)
+                    self.logger.error("Failed to retrieve company users due to a database error", exc_info=True)
                     raise
-                
+
                 except Exception:
-                    self.logger.error("error while getting all company user info ",exc_info=True)
+                    self.logger.error("Failed to retrieve company users", exc_info=True)
                     raise
 
 
     async def delete_user_by_id(self,info:DeleteUser):
-                    self.logger.info("start delete user by id service")
+                    self.logger.info("Deleting user by ID")
                     
                     try:
         
@@ -90,10 +90,10 @@ class UserService(Base):
                     
                     except SQLAlchemyError:
                         await self.db.rollback()
-                        self.logger.error("error while deleting user info ",exc_info=True)
+                        self.logger.error("Failed to delete user due to a database error", exc_info=True)
                         raise
-                    
+
                     except Exception:
-                        self.logger.error("error while deleting user info ",exc_info=True)
+                        self.logger.error("Failed to delete user", exc_info=True)
                         raise
     

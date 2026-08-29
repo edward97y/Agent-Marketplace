@@ -14,26 +14,26 @@ class CompanyService(Base):
         self.db=db
 
     async def add_company(self,data:AddCompany)->Company:
-        self.logger.info("start adding company service")
+        self.logger.info("Starting company creation")
         company=Company(name=data.name,plan=data.plan)
         try:
             self.db.add(company)
             await self.db.commit()
             await self.db.refresh(company)
-            self.logger.info("finish adding to data base")
+            self.logger.info("Company persisted to database successfully")
             return company
-        
+
         except SQLAlchemyError:
             await self.db.rollback()
-            self.logger.error("error while creating the company",exc_info=True)
+            self.logger.error("Failed to create company due to a database error", exc_info=True)
             raise
-        
+
         except Exception:
-            self.logger.error("error while creating the company",exc_info=True)
+            self.logger.error("Failed to create company", exc_info=True)
             raise
 
     async def get_company_by_id(self,info:GetCompany)->Company| None:
-            self.logger.info("start get company info service")
+            self.logger.info("Retrieving company information")
             
             try:
 
@@ -43,15 +43,15 @@ class CompanyService(Base):
                return result.scalar_one_or_none()
             
             except SQLAlchemyError:
-                self.logger.error("error while getting the company info ",exc_info=True)
+                self.logger.error("Failed to retrieve company information due to a database error", exc_info=True)
                 raise
-            
+
             except Exception:
-                self.logger.error("error while getting the company info ",exc_info=True)
+                self.logger.error("Failed to retrieve company information", exc_info=True)
                 raise
 
     async def get_all_company_info(self)->list[Company]:
-                self.logger.info("start get all company info service")
+                self.logger.info("Retrieving all companies")
                 
                 try:
     
@@ -61,16 +61,16 @@ class CompanyService(Base):
                    return result.scalars().all()
                 
                 except SQLAlchemyError:
-                    self.logger.error("error while getting all company info ",exc_info=True)
+                    self.logger.error("Failed to retrieve companies due to a database error", exc_info=True)
                     raise
-                
+
                 except Exception:
-                    self.logger.error("error while getting all company info ",exc_info=True)
+                    self.logger.error("Failed to retrieve companies", exc_info=True)
                     raise
 
 
     async def delete_company_by_id(self,info:DeleteCompany):
-                    self.logger.info("start delete company by id service")
+                    self.logger.info("Deleting company by ID")
                     
                     try:
         
@@ -85,10 +85,10 @@ class CompanyService(Base):
                     
                     except SQLAlchemyError:
                         await self.db.rollback()
-                        self.logger.error("error while deleting company info ",exc_info=True)
+                        self.logger.error("Failed to delete company due to a database error", exc_info=True)
                         raise
-                    
+
                     except Exception:
-                        self.logger.error("error while deleting company info ",exc_info=True)
+                        self.logger.error("Failed to delete company", exc_info=True)
                         raise
     

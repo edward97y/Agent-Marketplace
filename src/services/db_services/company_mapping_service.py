@@ -14,7 +14,7 @@ class CompanyMappingService(Base):
         self.db=db
 
     async def add_company_mapping(self,data:CreateCompanyMapping)->CompanySchemaMapping:
-        self.logger.info("start adding company mapping service")
+        self.logger.info("Starting company schema mapping creation")
         company_schema=CompanySchemaMapping(company_id=data.company_id,mapping={
         key: value.model_dump(mode="json")
         for key, value in data.mapping.items()
@@ -23,20 +23,20 @@ class CompanyMappingService(Base):
             self.db.add(company_schema)
             await self.db.commit()
             await self.db.refresh(company_schema)
-            self.logger.info("finish adding to data base")
+            self.logger.info("Company schema mapping persisted to database successfully")
             return company_schema
-        
+
         except SQLAlchemyError:
             await self.db.rollback()
-            self.logger.error("error while creating the company mapping",exc_info=True)
+            self.logger.error("Failed to create company schema mapping due to a database error", exc_info=True)
             raise
-        
+
         except Exception:
-            self.logger.error("error while creating the company",exc_info=True)
+            self.logger.error("Failed to create company schema mapping", exc_info=True)
             raise
 
     async def get_company_mapping_by_id(self,info:GetCompanyMapping)->CompanySchemaMapping| None:
-            self.logger.info("start get company mapping info service")
+            self.logger.info("Retrieving company schema mapping")
             
             try:
 
@@ -46,15 +46,15 @@ class CompanyMappingService(Base):
                return result.scalar_one_or_none()
             
             except SQLAlchemyError:
-                self.logger.error("error while getting the company mapping info ",exc_info=True)
+                self.logger.error("Failed to retrieve company schema mapping due to a database error", exc_info=True)
                 raise
-            
+
             except Exception:
-                self.logger.error("error while getting the company mapping info ",exc_info=True)
+                self.logger.error("Failed to retrieve company schema mapping", exc_info=True)
                 raise
 
     async def delete_company_mapping_by_id(self,info:DeleteCompanyMapping):
-                    self.logger.info("start delete company mapping by id service")
+                    self.logger.info("Deleting company schema mapping")
                     
                     try:
         
@@ -69,10 +69,10 @@ class CompanyMappingService(Base):
                     
                     except SQLAlchemyError:
                         await self.db.rollback()
-                        self.logger.error("error while deleting company mapping info ",exc_info=True)
+                        self.logger.error("Failed to delete company schema mapping due to a database error", exc_info=True)
                         raise
-                    
+
                     except Exception:
-                        self.logger.error("error while deleting company mapping info ",exc_info=True)
+                        self.logger.error("Failed to delete company schema mapping", exc_info=True)
                         raise
     

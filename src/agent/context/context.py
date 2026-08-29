@@ -1,5 +1,5 @@
 from dataclasses import dataclass
 from services.query_service import QueryService
 @dataclass
-class SalesAgentContext:
+class AgentContext:
     query_service:QueryService

@@ -2,9 +2,9 @@ from uuid import UUID
 from models.schemas.query_schema import Query
 from langchain_core.tools import tool
 from langgraph.prebuilt import ToolRuntime
-from ..context import SalesAgentContext
+from ..context import AgentContext
 @tool
-async def search_products(query:Query,runtime:ToolRuntime[SalesAgentContext]):
+async def search_products(query:Query,runtime:ToolRuntime[AgentContext]):
     """
     Search the company's products using filters .
     Use this tool when the customer is asking about available

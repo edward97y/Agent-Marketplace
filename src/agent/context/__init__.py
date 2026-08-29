@@ -1,1 +1,1 @@
-from .context import SalesAgentContext
+from .context import AgentContext

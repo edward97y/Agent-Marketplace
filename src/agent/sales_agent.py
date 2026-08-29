@@ -3,9 +3,10 @@ from langgraph.prebuilt import tools_condition,ToolNode
 from .state import SalesAgentState
 from .llm import tools
 from .nodes.sales.chat import chat_node
-from .context import SalesAgentContext
+from .context import AgentContext
+from langgraph.checkpoint.memory import InMemorySaver
 
-graph=StateGraph(SalesAgentState,context_schema=SalesAgentContext)
+graph=StateGraph(SalesAgentState,context_schema=AgentContext)
 
 graph.add_node("chat",chat_node)
 graph.add_node("tools",ToolNode(tools))
@@ -15,4 +16,4 @@ graph.add_conditional_edges("chat",tools_condition)
 graph.add_edge("tools","chat")
 
 
-sales_agent=graph.compile()
+sales_agent=graph.compile(checkpointer=InMemorySaver())
