@@ -1,4 +1,3 @@
-from uuid import UUID
 from models.schemas.query_schema import Query
 from langchain_core.tools import tool
 from langgraph.prebuilt import ToolRuntime
@@ -13,5 +12,5 @@ async def search_products(query:Query,runtime:ToolRuntime[AgentContext]):
 
     """
     company_id=runtime.state["company_id"]
-
-    return await runtime.context.query_service.search(company_id=company_id,query=query)
+    agents_runs_id=runtime.state["agent_runs_id"]
+    return await runtime.context.query_service.search(company_id=company_id,query=query,agents_runs_id=agents_runs_id)

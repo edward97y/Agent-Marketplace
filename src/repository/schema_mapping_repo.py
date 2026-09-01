@@ -3,9 +3,10 @@ from uuid import UUID
 from sqlalchemy import select
 from models import CompanySchemaMapping
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 class SchemaMappingRepository(Base):
 
-    def __init__(self,db):
+    def __init__(self,db:AsyncSession):
         super().__init__(db=db)
 
     async def get_by_company_id(self,company_id:UUID):

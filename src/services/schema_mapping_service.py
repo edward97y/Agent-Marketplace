@@ -2,8 +2,9 @@ from .base_service import Base
 from uuid import UUID
 from repository.schema_mapping_repo import SchemaMappingRepository
 from models.enums import EntityType
+from sqlalchemy.ext.asyncio import AsyncSession
 class SchemaMappingService(Base):
-    def __init__(self,db):
+    def __init__(self,db:AsyncSession):
         super().__init__()
         self.repo=SchemaMappingRepository(db=db)
 

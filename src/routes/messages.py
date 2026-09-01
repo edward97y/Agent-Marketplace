@@ -3,6 +3,8 @@ from db.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from services.message_service import MessageService
 from models.schemas.messages_routes_schema import SendMessages,GetMessages,MessageResponse
+from dotenv import load_dotenv
+load_dotenv()
 messages_router=APIRouter(prefix="/messages",tags=["messages"])
 
 
