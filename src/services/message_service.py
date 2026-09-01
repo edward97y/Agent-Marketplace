@@ -2,8 +2,7 @@ from .base_service import Base
 from models.schemas.messages_routes_schema import (GetMessages,SendMessages,MessageResponse)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
-from models.message import Message
-from sqlalchemy import select
+from .db_services.messages import MessageDBService
 from uuid import UUID
 from langchain_core.messages import (
     HumanMessage,
@@ -24,6 +23,7 @@ from models.company_db_config import CompanyDBConfig
 from .db_services.company_db_config_service import CompanyDBService
 from models.schemas.company_db_config_routes_schema import GetCompanyDBConfig
 from .agent_service import AgentServiceManger
+from .company_db_maker_service import CompanyDBService as companydbservice
 class MessageService(Base):
     def __init__(self,db:AsyncSession,conversation_id:UUID,agents:dict):
         super().__init__()
@@ -31,30 +31,6 @@ class MessageService(Base):
         self.conversation_id=conversation_id
         self.agents=agents
         
-    async def save_user_message(self,content:str):
-        self.logger.info("Saving user message")
-        message=Message(conversation_id=self.conversation_id,content=content,
-                        role=MessageRole.USER)
-        try:
-            self.db.add(message)
-            await self.db.commit()
-            await self.db.refresh(message)
-            self.logger.info("User message persisted to database")
-            return message
-        except SQLAlchemyError:
-            await self.db.rollback()
-            self.logger.error(
-                f"Database error saving user message (conversation_id={self.conversation_id})",
-                exc_info=True,
-            )
-            raise
-
-        except Exception:
-            self.logger.error(
-                f"Unexpected error saving user message (conversation_id={self.conversation_id})",
-                exc_info=True,
-            )
-            raise
 
 
     
@@ -81,28 +57,6 @@ class MessageService(Base):
             raise
 
 
-    async def get_messages(self, info: GetMessages)->MessageResponse:
-        self.logger.info("Retrieving messages for conversation")
-        try:
-            stmt = select(Message).where(Message.conversation_id == info.conversation_id)
-            result = await self.db.execute(stmt)
-            messages = result.scalars().all()
-            self.logger.info(f"Retrieved {len(messages)} messages")
-            return messages
-
-        except SQLAlchemyError:
-            self.logger.error(
-                f"Database error retrieving messages (conversation_id={info.conversation_id})",
-                exc_info=True,
-            )
-            raise
-
-        except Exception:
-            self.logger.error(
-                f"Unexpected error retrieving messages (conversation_id={info.conversation_id})",
-                exc_info=True,
-            )
-            raise
 
 
     async def to_langchain_messages(self,
@@ -136,7 +90,8 @@ class MessageService(Base):
     async def send_message(self, content:SendMessages):
         self.logger.info("Processing message send request")
         try:
-            save_user_message = await self.save_user_message(content=content)
+            message_service=MessageDBService(db=self.db)
+            save_user_message = await message_service.save_user_message(content=content,conversation_id=self.conversation_id)
             self.logger.info("Saved user message")
 
             conversation = ConversationService(db=self.db)
@@ -161,15 +116,15 @@ class MessageService(Base):
             company_db_url = await self.build_database_url(config=company_config)
             self.logger.info("Prepared company database connection")
 
-            query_service = QueryService(db=self.settings.DATABASE_URL, company_db=company_db_url)
+            query_service = QueryService(db=self.db,company_db_service=companydbservice(), company_database_url=company_db_url)
             context = AgentContext(query_service=query_service)
 
             agent_service_manger = AgentServiceManger(agent=agent,db=self.db)
-            get_message_info = await self.get_messages(info=GetMessages(conversation_id=self.conversation_id))
+            get_message_info = await message_service.get_messages(info=GetMessages(conversation_id=self.conversation_id))
             messages = await self.to_langchain_messages(messages=get_message_info)
 
             response,message_id = await agent_service_manger.run_agent(
-                messages, conversation_id=self.conversation_id, context=context, company_id=conversation_info.company_id
+                messages, conversation_id=self.conversation_id, context=context, company_id=conversation_info.company_id,agent_id=agent_info.id
             )
 
             result=MessageResponse(conversation_id=self.conversation_id,id=message_id,role=MessageRole.ASSISTANT,content=response)

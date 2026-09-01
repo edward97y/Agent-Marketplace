@@ -4,6 +4,8 @@ from models.enums.db_enum import MessageRole
 from models.message import Message
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from .db_services.agent_runs_service import AgentRunService
+from models.enums.db_enum import RunStatus
 class AgentServiceManger(Base):
     def __init__(self,agent,db:AsyncSession):
       super().__init__()
@@ -21,6 +23,7 @@ class AgentServiceManger(Base):
             )
 
         return str(content)
+    
     async def save_agent_message(self,content:str,conversation_id:UUID):
         self.logger.info("Saving user message")
         message=Message(conversation_id=conversation_id,content=content,
@@ -47,14 +50,20 @@ class AgentServiceManger(Base):
             raise
 
     
+    
     async def run_agent(self,messages,conversation_id:UUID,
-                        context,company_id:UUID):
+                        context,company_id:UUID,agent_id:UUID):
         
         self.logger.info("start run agent function")
+        agent_service=AgentRunService(db=self.db)
         try:
+            agent_runs=await agent_service.save_agent_runs_by_conversation_id(conversation_id=conversation_id,
+                                                                          agent_id=agent_id,
+                                                                          status=RunStatus.RUNNING)
             result=await self.agent.ainvoke( {
             "messages": messages,
-            "company_id":company_id
+            "company_id":company_id,
+            "agent_runs_id":agent_runs.id
             },
             context=context,
             config={
@@ -73,8 +82,10 @@ class AgentServiceManger(Base):
                 content=content
             )
             self.logger.info("finish run agent function")
-
+            agent_runs_updated=await agent_service.update_agent_runs_by_conversation_id(agent_runs=agent_runs,status=RunStatus.COMPLETED)
             return content,message.id
         except Exception:
             self.logger.error("error while running the agent",exc_info=True)
+            agent_runs_updated=agent_service.update_agent_runs_by_conversation_id(agent_runs=agent_runs,status=RunStatus.FAILED)
+                        
             raise

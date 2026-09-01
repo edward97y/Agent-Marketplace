@@ -28,8 +28,7 @@ class AgentRun(Base):
     conversation_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("conversations.id"),
-        nullable=False,
-        unique=True
+        nullable=False
     )
 
     agent_id: Mapped[UUID] = mapped_column(
@@ -43,11 +42,18 @@ class AgentRun(Base):
         nullable=False,
         default=RunStatus.PENDING.value
     )
+    
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now()
     )
+    
+    updated_at: Mapped[datetime] = mapped_column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            onupdate=func.now()
+        )
 
     conversation: Mapped["Conversation"] = relationship(
         back_populates="runs"
