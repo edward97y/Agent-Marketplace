@@ -10,6 +10,7 @@ from .enums import MessageRole
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from models.conversation import Conversation
+    from models.memory import Memory
 
 
 class Message(Base):
@@ -44,4 +45,9 @@ class Message(Base):
 
     conversation: Mapped["Conversation"] = relationship(
         back_populates="messages"
+    )
+    memory: Mapped["Memory"] = relationship(
+        "Memory",
+        back_populates="last_message",
+        uselist=False,
     )
