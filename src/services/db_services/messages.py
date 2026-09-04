@@ -59,5 +59,64 @@ class MessageDBService(Base):
                     exc_info=True,
                 )
                 raise
+
+    async def get_messages_for_summary(
+    self,
+    conversation_id: UUID,
+    last_message_id: UUID,
+    limit: int = 30,
+    ):
+        stmt = (
+            select(Message)
+            .where(
+                Message.conversation_id == conversation_id,
+                Message.created_at >= (
+                    select(Message.created_at)
+                    .where(Message.id == last_message_id)
+                    .scalar_subquery()
+                ),
+            )
+            .order_by(Message.created_at.asc())
+            .limit(limit)
+        )
+
+        result = await self.db.execute(stmt)
+
+        return result.scalars().all()
     
+    async def get_messages_after(
+    self,
+    conversation_id: UUID,
+    last_message_id: UUID | None,
+) -> list[Message]:
+        self.logger.info("Retrieving messages after last message")
+
+        if last_message_id is None:
+            self.logger.info(f"Retrieving all messages for conversation")
+            stmt = (
+                select(Message)
+                .where(
+                    Message.conversation_id == conversation_id
+                )
+                .order_by(Message.created_at.asc())
+            )
     
+        else:
+            self.logger.info(f"Retrieving messages after last message ID")
+            last_message = await self.db.get(
+                Message,
+                last_message_id
+            )
+    
+            stmt = (
+                select(Message)
+                .where(
+                    Message.conversation_id == conversation_id,
+                    Message.created_at > last_message.created_at
+                )
+                .order_by(Message.created_at.asc())
+            )
+    
+        result = await self.db.execute(stmt)
+        self.logger.info(f"Finished retrieving messages")
+        return result.scalars().all()

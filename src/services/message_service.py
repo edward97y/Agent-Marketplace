@@ -4,11 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from .db_services.messages import MessageDBService
 from uuid import UUID
-from langchain_core.messages import (
-    HumanMessage,
-    AIMessage,
-    ToolMessage
-)
+
 from models.enums.db_enum import DatabaseType
 from models.enums.db_enum import MessageRole
 from .db_services.conversation_service import ConversationService
@@ -58,35 +54,6 @@ class MessageService(Base):
 
 
 
-
-    async def to_langchain_messages(self,
-    messages: list[MessageResponse]
-    ):
-        self.logger.info(f"Converting {len(messages)} messages to LangChain format")
-        try:
-            result = []
-
-            for message in messages:
-
-                if message.role == "user":
-                    result.append(HumanMessage(content=message.content))
-
-                elif message.role == "assistant":
-                    result.append(AIMessage(content=message.content))
-
-                elif message.role == "tool":
-                    result.append(ToolMessage(content=message.content))
-
-            self.logger.info("Conversion to LangChain format completed")
-            return result
-
-        except Exception:
-            self.logger.error(
-                "Failed to convert messages to LangChain format",
-                exc_info=True,
-            )
-            raise
-    
     async def send_message(self, content:SendMessages):
         self.logger.info("Processing message send request")
         try:
@@ -120,9 +87,10 @@ class MessageService(Base):
             context = AgentContext(query_service=query_service)
 
             agent_service_manger = AgentServiceManger(agent=agent,db=self.db)
-            get_message_info = await message_service.get_messages(info=GetMessages(conversation_id=self.conversation_id))
-            messages = await self.to_langchain_messages(messages=get_message_info)
 
+            messages=await self.to_langchain_messages(
+                messages=[save_user_message]
+            )
             response,message_id = await agent_service_manger.run_agent(
                 messages, conversation_id=self.conversation_id, context=context, company_id=conversation_info.company_id,agent_id=agent_info.id
             )
@@ -144,3 +112,4 @@ class MessageService(Base):
                 exc_info=True,
             )
             raise
+    
