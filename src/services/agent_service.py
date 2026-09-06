@@ -105,13 +105,26 @@ class AgentServiceManger(Base):
                         context,company_id:UUID,agent_id:UUID):
         
         self.logger.info("start run agent function")
+       
         agent_service=AgentRunService(db=self.db)
+
         try:
+            start = time.perf_counter()
             agent_runs=await agent_service.save_agent_runs_by_conversation_id(conversation_id=conversation_id,
                                                                           agent_id=agent_id,
                                                                           status=RunStatus.RUNNING)
+            
+            self.logger.info( f"[TIMING] save_agent_run: "f"{time.perf_counter() - start:.3f}s")
+
+            start = time.perf_counter()
 
             summary = await self.summarize_if_needed(conversation_id=conversation_id)
+
+            self.logger.info( f"[TIMING] summarize_if_needed: "f"{time.perf_counter() - start:.3f}s")
+
+
+            start = time.perf_counter()
+            
             result=await self.agent.ainvoke( {
             "messages": messages,
             "company_id":company_id,
@@ -121,17 +134,31 @@ class AgentServiceManger(Base):
             context=context,
            
             )
+
+            self.logger.info( f"[TIMING] agent.ainvoke: "f"{time.perf_counter() - start:.3f}s")
+            
             self.logger.info("saving agent response")
+            start = time.perf_counter()
+
             message = result["messages"][-1]
 
             content = await self.extract_text(message.content)
+
+            self.logger.info( f"[TIMING] extract_text: "f"{time.perf_counter() - start:.3f}s")
+
+            start = time.perf_counter()
 
             message=await self.save_agent_message(
                 conversation_id=conversation_id,
                 content=content
             )
+            self.logger.info( f"[TIMING] save_agent_message: "f"{time.perf_counter() - start:.3f}s")
+            
             self.logger.info("finish run agent function")
+            start = time.perf_counter()
             agent_runs_updated=await agent_service.update_agent_runs_by_conversation_id(agent_runs=agent_runs,status=RunStatus.COMPLETED)
+            self.logger.info( f"[TIMING] update_agent_runs: "f"{time.perf_counter() - start:.3f}s")
+                        
             return content,message.id
         except Exception:
             self.logger.error("error while running the agent",exc_info=True)

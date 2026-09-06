@@ -5,7 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import select,delete
 from models.schemas.company_mapping_schema import (CreateCompanyMapping,
                                                    GetCompanyMapping,
-                                                   DeleteCompanyMapping)
+                                                   DeleteCompanyMapping,UpdateCompanyMapping)
 
 class CompanyMappingService(Base):
 
@@ -52,7 +52,75 @@ class CompanyMappingService(Base):
             except Exception:
                 self.logger.error("Failed to retrieve company schema mapping", exc_info=True)
                 raise
+    async def update_company_mapping_by_id(
+    self,
+    info: UpdateCompanyMapping
+    ) -> CompanySchemaMapping:
 
+        self.logger.info(
+            "Updating company schema mapping ",
+        )
+
+        try:
+            stmt = select(CompanySchemaMapping).where(
+                CompanySchemaMapping.company_id == info.company_id
+            )
+
+            result = await self.db.execute(stmt)
+            mapping = result.scalar_one_or_none()
+    
+            mapping_data = {
+                key: value.model_dump(mode="json")
+                for key, value in info.mapping.items()
+            }
+
+            if mapping:
+                mapping.mapping = mapping_data
+
+                await self.db.commit()
+                await self.db.refresh(mapping)
+
+                self.logger.info(
+                    "Company schema mapping updated successfully"
+                )
+
+                return mapping
+
+            mapping = CompanySchemaMapping(
+                company_id=info.company_id,
+                mapping=mapping_data
+            )
+
+            self.db.add(mapping)
+
+            await self.db.commit()
+            await self.db.refresh(mapping)
+
+            self.logger.info(
+                "New company schema mapping created successfully"
+            )
+
+            return mapping
+
+        except SQLAlchemyError:
+            await self.db.rollback()
+
+            self.logger.error(
+                "Failed to update company schema mapping due to a database error",
+                exc_info=True
+            )
+
+            raise
+
+        except Exception:
+            await self.db.rollback()
+
+            self.logger.error(
+                "Failed to update company schema mapping",
+                exc_info=True
+            )
+
+            raise
     async def delete_company_mapping_by_id(self,info:DeleteCompanyMapping):
                     self.logger.info("Deleting company schema mapping")
                     

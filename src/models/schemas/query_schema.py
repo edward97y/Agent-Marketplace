@@ -6,7 +6,6 @@ class Filter(BaseModel):
     field:str=Field(description=(
             "Logical field name. Use business field names only, "
             "never physical database column names. "
-            "For example, use 'brand', not 'make'."
         ))
     operator:FilterOperator
     value:Any

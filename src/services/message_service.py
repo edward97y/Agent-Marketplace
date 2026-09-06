@@ -72,8 +72,9 @@ class MessageService(Base):
                 GetAgent(company_id=conversation_info.company_id, agent_id=conversation_info.agent_id)
             )
             self.logger.info("Retrieved agent info")
-
+            
             factory = AgentFactory()
+
             agent = factory.get_agent(agents=self.agents, agent_type=agent_info.type)
 
             company_db_service = CompanyDBService(db=self.db)
