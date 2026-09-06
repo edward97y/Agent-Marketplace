@@ -10,6 +10,7 @@ from models.enums.tool_enum import toolTypes
 from sqlalchemy.ext.asyncio import AsyncSession
 from db.database import async_session
 from .company_db_maker_service import CompanyDBService
+from fastapi.encoders import jsonable_encoder
 class QueryService(Base):
     def __init__(self,db:AsyncSession,company_db_service:CompanyDBService,company_database_url:str):
         super().__init__()
@@ -41,37 +42,33 @@ class QueryService(Base):
             return str(value)
 
         return value
-    async def search(
-        self,
-        company_id: UUID,
-        agents_runs_id:UUID,
-        query:Query
+    async def search_entity(
+    self,
+    company_id: UUID,
+    agents_runs_id: UUID,
+    query: Query
     ):
-
-        self.logger.info("Start query service (search function)")
-
-        
-   
-
-        entity_mapping = await self.mapping.get_entity_mapping(
-            company_id=company_id,
-            entity=query.entity
-        )
-
-       
-        table_name = entity_mapping["table"]
-        fields = entity_mapping["fields"]
-
         self.logger.info(
-            f"Querying table: {table_name}"
+            f"Start entity search: {query.entity}"
         )
 
         try:
-            Sessionlocal=self.company_db_service.get_sessionmaker(company_id=company_id,url=self.company_url)
+            entity_mapping = await self.mapping.get_entity_mapping(
+                company_id=company_id,
+                entity=query.entity
+            )
 
-            async with Sessionlocal()as company_db:
+            table_name = entity_mapping["table"]
+            fields = entity_mapping["fields"]
+
+            SessionLocal = self.company_db_service.get_sessionmaker(
+                company_id=company_id,
+                url=self.company_url
+            )
+
+            async with SessionLocal() as company_db:
+
                 metadata = MetaData()
-
                 connection = await company_db.connection()
 
                 table = await connection.run_sync(
@@ -82,15 +79,15 @@ class QueryService(Base):
                     )
                 )
 
-
-
                 stmt = select(table)
+
                 if query.filters:
+
                     for filter_item in query.filters:
 
                         field = filter_item.field
                         operator = filter_item.operator
-                        value = filter_item.value
+
                         field_mapping = fields.get(field)
 
                         if not field_mapping:
@@ -104,30 +101,44 @@ class QueryService(Base):
                         column = table.c[column_name]
 
                         value = self._normalize_value(
-                                filter_item.value,
-                                field_type
-                            )
+                            filter_item.value,
+                            field_type
+                        )
 
                         if operator == FilterOperator.EQ:
 
                             if field_type == "string":
-                                 stmt = stmt.where(
-                                     func.lower(column) == value.lower()
-                                 )
+                                stmt = stmt.where(
+                                    func.lower(column) == value.lower()
+                                )
                             else:
-                                 stmt = stmt.where(
-                                     column == value
-                                 )
+                                stmt = stmt.where(
+                                    column == value
+                                )
+
+                        elif operator == FilterOperator.NE:
+
+                            if field_type == "string":
+                                stmt = stmt.where(
+                                    func.lower(column) != value.lower()
+                                )
+                            else:
+                                stmt = stmt.where(
+                                    column != value
+                                )
+
                         elif operator == FilterOperator.CONTAINS:
 
                             if field_type != "string":
                                 raise ValueError(
-                                    f"Operator 'contains' can only be used with strings"
+                                    "Operator 'contains' can only be "
+                                    "used with strings"
                                 )
 
                             stmt = stmt.where(
                                 column.ilike(f"%{value}%")
                             )
+
                         elif operator == FilterOperator.LT:
                             stmt = stmt.where(column < value)
 
@@ -140,23 +151,88 @@ class QueryService(Base):
                         elif operator == FilterOperator.GTE:
                             stmt = stmt.where(column >= value)
 
-
-
-
+                        else:
+                            raise ValueError(
+                                f"Unsupported filter operator: {operator}"
+                            )
 
                 result = await company_db.execute(stmt)
-                self.logger.info("finish searching function successfully")
-                async with async_session() as db:
-                    tool_call=ToolDBService(db=db)
-                    output=[dict(row) for row in result.mappings().all()]
-                    input={"company_id":str(company_id),"agents_runs_id":str(agents_runs_id),"query":query.model_dump(mode="json")}
-                
-                    _=await tool_call.save_tool_calls(run_id=agents_runs_id,tool=toolTypes.SEARCH,input=input,output=output)
-                    return output
-        
+
+                output = [
+                    dict(row)
+                    for row in result.mappings().all()
+                ]
+            output = jsonable_encoder(output)
+            input_data = {
+                "company_id": str(company_id),
+                "agents_runs_id": str(agents_runs_id),
+                "query": query.model_dump(mode="json")
+            }
+
+            async with async_session() as db:
+
+                tool_call = ToolDBService(db=db)
+
+                await tool_call.save_tool_calls(
+                    run_id=agents_runs_id,
+                    tool=toolTypes.SEARCH,
+                    input=input_data,
+                    output=output
+                )
+
+            self.logger.info(
+                f"Finished entity search: {query.entity}"
+            )
+
+            return output
+
         except SQLAlchemyError:
-            self.logger.error("error while searching db ",exc_info=True)
+            self.logger.error(
+                "SQLAlchemy error while searching entity",
+                exc_info=True
+            )
             raise
+
         except Exception:
-            self.logger.error("error while searching db ",exc_info=True)
+            self.logger.error(
+                "Error while searching entity",
+                exc_info=True
+            )
             raise
+    async def search_for_products(
+    self,
+    company_id: UUID,
+    agents_runs_id: UUID,
+    query: Query
+    ):
+        return await self.search_entity(
+            company_id=company_id,
+            agents_runs_id=agents_runs_id,
+            query=query
+        )
+
+
+    async def search_for_customers(
+    self,
+    company_id: UUID,
+    agents_runs_id: UUID,
+    query: Query
+    ):
+        return await self.search_entity(
+            company_id=company_id,
+            agents_runs_id=agents_runs_id,
+            query=query
+        )
+
+
+    async def search_for_orders(
+    self,
+    company_id: UUID,
+    agents_runs_id: UUID,
+    query: Query
+    ):
+        return await self.search_entity(
+            company_id=company_id,
+            agents_runs_id=agents_runs_id,
+            query=query
+        )

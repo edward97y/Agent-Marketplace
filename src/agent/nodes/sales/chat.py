@@ -21,7 +21,7 @@ async def chat_node(state: SalesAgentState):
         )
 
     messages.extend(state["messages"])
-
+    
     response = await llm_with_tools.ainvoke(messages)
 
     return {

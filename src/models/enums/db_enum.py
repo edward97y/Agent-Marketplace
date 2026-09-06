@@ -45,3 +45,4 @@ class FilterOperator(str,Enum):
     GT = "gt"
     LTE = "lte"
     GTE = "gte"
+    NE="ne"

@@ -1,3 +1,5 @@
+from dataclasses import fields
+
 from .base_service import Base
 from uuid import UUID
 from repository.schema_mapping_repo import SchemaMappingRepository
@@ -21,6 +23,8 @@ class SchemaMappingService(Base):
         mapping=await self.repo.get_by_company_id(company_id=company_id)
      
         result=mapping.get(entity.value)
+      
+        
         if result is None:
             raise ValueError(f"Entity '{entity.value}' is not found")
         return result

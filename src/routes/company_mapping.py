@@ -3,7 +3,7 @@ from db.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from services.db_services.company_mapping_service import CompanyMappingService
 from models.schemas.company_mapping_schema import (CreateCompanyMapping,
-                                                   GetCompanyMapping,
+                                                   GetCompanyMapping,UpdateCompanyMapping,
                                                    DeleteCompanyMapping,CompanyMappingResponse)
 company_mapping_router=APIRouter(prefix="/company_mapping",tags=["company_mapping"])
 
@@ -18,6 +18,12 @@ async def create_company(data:CreateCompanyMapping,
     result=await service.add_company_mapping(data=data)
     return result
 
+@company_mapping_router.post("/update",response_model=CompanyMappingResponse,status_code=status.HTTP_201_CREATED)
+async def create_company(info:UpdateCompanyMapping,
+                         service:CompanyMappingService=Depends(get_company_mapping_service)):
+
+    result=await service.update_company_mapping_by_id(info=info)
+    return result
 @company_mapping_router.get("/info",response_model=CompanyMappingResponse,status_code=status.HTTP_200_OK)
 async def get_company_info(info:GetCompanyMapping=Depends(),
                        service:CompanyMappingService=Depends(get_company_mapping_service),):
