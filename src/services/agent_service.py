@@ -101,7 +101,7 @@ class AgentServiceManger(Base):
         self.logger.info(f"finished the summary")
         return summary
 
-    async def run_agent(self,messages,conversation_id:UUID,
+    async def run_agent(self,messages,conversation_id:UUID,customer_id:UUID,
                         context,company_id:UUID,agent_id:UUID):
         
         self.logger.info("start run agent function")
@@ -129,6 +129,7 @@ class AgentServiceManger(Base):
             "messages": messages,
             "company_id":company_id,
             "agent_runs_id":agent_runs.id,
+            "customer_id":customer_id,
             "summary": summary
             },
             context=context,

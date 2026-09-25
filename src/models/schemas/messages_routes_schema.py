@@ -15,6 +15,7 @@ class SendMessages(BaseModel):
     """this class for send message schema"""
 
     conversation_id:UUID
+    customer_id:UUID
     content: str
 
 class MessageResponse(BaseModel):
