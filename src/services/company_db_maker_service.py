@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 
-class CompanyDBService:
+class CompanyDBServices:
     """
     Manages database engines and session makers for company databases.
 

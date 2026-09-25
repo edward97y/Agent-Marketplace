@@ -1,18 +1,21 @@
+from dataclasses import fields
+
 from .base_service import Base
 from uuid import UUID
 from models.enums import FilterOperator
 from .schema_mapping_service import SchemaMappingService
 from sqlalchemy import select,MetaData, Table,func
 from sqlalchemy.exc import SQLAlchemyError
-from models.schemas.query_schema import Query
+from models.schemas.query_schema import Query,OrderFilter
 from .db_services.tool_calls_service import ToolDBService
 from models.enums.tool_enum import toolTypes
 from sqlalchemy.ext.asyncio import AsyncSession
 from db.database import async_session
-from .company_db_maker_service import CompanyDBService
+from .company_db_maker_service import CompanyDBServices
 from fastapi.encoders import jsonable_encoder
+from models.enums import EntityType
 class QueryService(Base):
-    def __init__(self,db:AsyncSession,company_db_service:CompanyDBService,company_database_url:str):
+    def __init__(self,db:AsyncSession,company_db_service:CompanyDBServices,company_database_url:str):
         super().__init__()
         self.mapping=SchemaMappingService(db=db)
         self.company_db_service=company_db_service
@@ -212,27 +215,221 @@ class QueryService(Base):
         )
 
 
-    async def search_for_customers(
-    self,
-    company_id: UUID,
-    agents_runs_id: UUID,
-    query: Query
-    ):
-        return await self.search_entity(
-            company_id=company_id,
-            agents_runs_id=agents_runs_id,
-            query=query
-        )
-
 
     async def search_for_orders(
     self,
     company_id: UUID,
     agents_runs_id: UUID,
-    query: Query
+    customer_id: UUID,
+    order_filter: OrderFilter | None = None,
     ):
-        return await self.search_entity(
-            company_id=company_id,
-            agents_runs_id=agents_runs_id,
-            query=query
-        )
+        self.logger.info("Start order search for customer")
+
+        try:
+            entity_mapping = await self.mapping.get_entity_mapping(
+                company_id=company_id,
+                entity=EntityType.ORDER,
+            )
+
+            table_name = entity_mapping["table"]
+            fields = entity_mapping["fields"]
+            self.logger.info(
+            f"ORDER ENTITY MAPPING: {entity_mapping}"
+            )
+
+            self.logger.info(
+                f"ORDER FIELDS: {fields}"
+            )
+
+            self.logger.info(
+                f"CUSTOMER ID MAPPING: {fields.get('customer_id')}"
+            )
+            SessionLocal = self.company_db_service.get_sessionmaker(
+                company_id=company_id,
+                url=self.company_url,
+            )
+
+            async with SessionLocal() as company_db:
+
+                metadata = MetaData()
+                connection = await company_db.connection()
+
+                table = await connection.run_sync(
+                    lambda conn: Table(
+                        table_name,
+                        metadata,
+                        autoload_with=conn,
+                    )
+                )
+
+                stmt = select(table)
+
+                customer_mapping = fields.get("customer_id")
+
+                if not customer_mapping:
+                    raise ValueError(
+                        "Field 'customer_id' is not mapped for orders"
+                    )
+
+                customer_column_name = customer_mapping["column"]
+                customer_field_type = customer_mapping["type"]
+
+                customer_column = table.c[customer_column_name]
+
+                normalized_customer_id = self._normalize_value(
+                    customer_id,
+                    customer_field_type,
+                )
+
+                stmt = stmt.where(
+                    customer_column == normalized_customer_id
+                )
+
+
+                if order_filter:
+
+
+                    if order_filter.status is not None:
+
+                        status_mapping = fields.get("status")
+
+                        if not status_mapping:
+                            raise ValueError(
+                                "Field 'status' is not mapped for orders"
+                            )
+
+                        column_name = status_mapping["column"]
+                        field_type = status_mapping["type"]
+
+                        column = table.c[column_name]
+
+                        value = self._normalize_value(
+                            order_filter.status,
+                            field_type,
+                        )
+
+                        if field_type == "string":
+                            stmt = stmt.where(
+                                func.lower(column)
+                                == value.lower()
+                            )
+                        else:
+                            stmt = stmt.where(
+                                column == value
+                            )
+
+
+                    if order_filter.date_from is not None:
+
+                        date_mapping = fields.get("order_date")
+
+                        if not date_mapping:
+                            raise ValueError(
+                                "Field 'order_date' is not mapped for orders"
+                            )
+
+                        column_name = date_mapping["column"]
+                        field_type = date_mapping["type"]
+
+                        column = table.c[column_name]
+
+                        value = self._normalize_value(
+                            order_filter.date_from,
+                            field_type,
+                        )
+
+                        stmt = stmt.where(
+                            column >= value
+                        )
+
+
+                    if order_filter.date_to is not None:
+
+                        date_mapping = fields.get("order_date")
+
+                        if not date_mapping:
+                            raise ValueError(
+                                "Field 'order_date' is not mapped for orders"
+                            )
+
+                        column_name = date_mapping["column"]
+                        field_type = date_mapping["type"]
+
+                        column = table.c[column_name]
+
+                        value = self._normalize_value(
+                            order_filter.date_to,
+                            field_type,
+                        )
+
+                        stmt = stmt.where(
+                            column <= value
+                        )
+
+                order_date_mapping = fields.get("order_date")
+
+                if order_date_mapping:
+
+                    order_date_column = table.c[
+                        order_date_mapping["column"]
+                    ]
+
+                    stmt = stmt.order_by(
+                        order_date_column.desc()
+                    )
+
+
+                result = await company_db.execute(stmt)
+
+                output = [
+                    dict(row)
+                    for row in result.mappings().all()
+                ]
+
+
+            output = jsonable_encoder(output)
+
+
+            input_data = {
+                "company_id": str(company_id),
+                "customer_id": str(customer_id),
+                "agents_runs_id": str(agents_runs_id),
+                "filter": (
+                    order_filter.model_dump(mode="json")
+                    if order_filter
+                    else None
+                ),
+            }
+
+            async with async_session() as db:
+
+                tool_call = ToolDBService(db=db)
+
+                await tool_call.save_tool_calls(
+                    run_id=agents_runs_id,
+                    tool=toolTypes.SEARCH,
+                    input=input_data,
+                    output=output,
+                )
+
+            self.logger.info("Finished order search for customer")
+
+            return output
+
+        except SQLAlchemyError:
+
+            self.logger.error(
+                "SQLAlchemy error while searching orders",
+                exc_info=True,
+            )
+
+            raise
+
+        except Exception:
+
+            self.logger.error(
+                "Error while searching orders",
+                exc_info=True,
+            )
+
+            raise

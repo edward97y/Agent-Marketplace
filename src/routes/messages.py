@@ -8,11 +8,11 @@ load_dotenv()
 messages_router=APIRouter(prefix="/messages",tags=["messages"])
 
 
-@messages_router.post("/send/message",response_model=MessageResponse,status_code=status.HTTP_201_CREATED)
+@messages_router.post("/send/message",response_model=MessageResponse,status_code=status.HTTP_200_OK)
 async def send_messages(data:SendMessages,request:Request,
                          db:AsyncSession=Depends(get_db),):
     agents=request.app.state.agents
-    service=MessageService(db=db,conversation_id=data.conversation_id,agents=agents)
+    service=MessageService(db=db,customer_id=data.customer_id,conversation_id=data.conversation_id,agents=agents)
     result=await service.send_message(content=data.content)
     return result
 

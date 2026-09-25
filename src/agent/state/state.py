@@ -4,3 +4,4 @@ class SalesAgentState(MessagesState):
     summary:str | None = None
     company_id:UUID
     agent_runs_id:UUID
+    customer_id:UUID| None = None

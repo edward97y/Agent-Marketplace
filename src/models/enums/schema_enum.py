@@ -5,3 +5,5 @@ class CompanyMappingType(str,Enum):
     INTEGER="integer"
     NUMBER="number"
     BOOLEAN="boolean"
+    UUID="uuid"
+    DATETIME="datetime"
