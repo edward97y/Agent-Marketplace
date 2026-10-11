@@ -381,10 +381,23 @@ class QueryService(Base):
 
                 result = await company_db.execute(stmt)
 
-                output = [
-                    dict(row)
-                    for row in result.mappings().all()
-                ]
+                order_id_mapping = fields.get("order_id")
+
+                if not order_id_mapping:
+                    raise ValueError(
+                        "Field 'order_id' is not mapped for orders"
+                    )
+                
+                order_id_column = order_id_mapping["column"]
+                
+                output = []
+                
+                for row in result.mappings().all():
+                    order = dict(row)
+                
+                    order["order_id"] = order[order_id_column]
+                
+                    output.append(order)
 
 
             output = jsonable_encoder(output)

@@ -14,7 +14,7 @@ async def create_order(
     Create a new order for a customer.
 
     Use this tool when the customer wants to purchase one or more
-    products/cars.
+    products.
 
     The product price is retrieved from the company's database.
     Do not provide or assume product prices from the user.

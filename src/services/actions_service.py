@@ -29,6 +29,7 @@ class OrderActionService(Base):
         self.mapping = SchemaMappingService(db=db)
         self.company_db_service = company_db_service
         self.company_url = company_database_url
+        self.tool_call = ToolDBService(db=db)
 
     async def create_order(
         self,
@@ -48,7 +49,7 @@ class OrderActionService(Base):
 
             order_fields = order_mapping["fields"]
             order_table_name = order_mapping["table"]
-
+            
             order_item_mapping = await self.mapping.get_entity_mapping(
                 company_id=company_id,
                 entity=EntityType.ORDER_ITEMS,
@@ -173,14 +174,6 @@ class OrderActionService(Base):
                     product_id_mapping["column"]
                 ]
 
-                price_column = product_table.c[
-                    price_mapping["column"]
-                ]
-
-                stock_column = product_table.c[
-                    stock_mapping["column"]
-                ]
-
                 resolved_items = []
                 total_amount = 0
 
@@ -275,9 +268,9 @@ class OrderActionService(Base):
             self.logger.info(
                 f"Order created successfully: {output['order_id']}"
             )
-            tool_call = ToolDBService(db=self.db)
+            
 
-            await tool_call.save_tool_calls(
+            await self.tool_call.save_tool_calls(
                 run_id=agents_runs_id,
                 tool=toolTypes.CREATE_ORDER,
                 input=jsonable_encoder(data),
@@ -299,3 +292,90 @@ class OrderActionService(Base):
                 exc_info=True,
             )
             raise
+
+    async def cancel_order(self,company_id:UUID,customer_id:UUID,
+                           agents_runs_id:UUID,order_id:UUID):
+        self.logger.info("Start cancel order")
+
+        try:
+            order_mapping = await self.mapping.get_entity_mapping(
+                company_id=company_id,
+                entity=EntityType.ORDER,
+            )
+
+            order_fields = order_mapping["fields"]
+            order_table_name = order_mapping["table"]
+            
+            order_id_mapping = order_fields.get("order_id")
+            order_id_column = order_table.c[
+            order_id_mapping["column"]
+            ]
+            SessionLocal = self.company_db_service.get_sessionmaker(
+                company_id=company_id,
+                url=self.company_url,
+            )
+
+            async with SessionLocal() as company_db:
+
+                metadata = MetaData()
+                connection = await company_db.connection()
+
+                order_table = await connection.run_sync(
+                    lambda conn: Table(
+                        order_table_name,
+                        metadata,
+                        autoload_with=conn,
+                    )
+                )
+
+                customer_id_mapping = order_fields.get("customer_id")
+
+                if not customer_id_mapping:
+                    raise ValueError(
+                        "Field 'customer_id' is not mapped for orders"
+                    )
+
+                customer_column = order_table.c[
+                    customer_id_mapping["column"]
+                ]
+
+                stmt = (
+                    order_table.update()
+                    .where(customer_column == customer_id,
+                           order_id_column == order_id,)
+                    .values(status="canceled")
+                    .returning(order_table)
+                )
+
+                result = await company_db.execute(stmt)
+
+                canceled_orders = result.mappings().all()
+
+                await company_db.commit()
+            data={"company_id": company_id, "customer_id": customer_id, "agents_runs_id": agents_runs_id, "order_id": order_id}
+            await self.tool_call.save_tool_calls(
+                run_id=agents_runs_id,
+                tool=toolTypes.CREATE_ORDER,
+                input=jsonable_encoder(data),
+                output=jsonable_encoder(canceled_orders),
+            )
+
+            self.logger.info(
+                f"Orders canceled successfully for customer"
+            )
+            return canceled_orders
+
+        except SQLAlchemyError:
+            self.logger.error(
+                "SQLAlchemy error while canceling orders",
+                exc_info=True,
+            )
+            raise
+
+        except Exception:
+            self.logger.error(
+                "Error while canceling orders",
+                exc_info=True,
+            )
+            raise
+    
