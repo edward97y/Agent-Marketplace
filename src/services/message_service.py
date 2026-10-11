@@ -102,7 +102,8 @@ class MessageService(Base):
                 messages=[save_user_message]
             )
             response,message_id = await agent_service_manger.run_agent(
-                messages,customer_id=self.customer_id, conversation_id=self.conversation_id, context=context, company_id=conversation_info.company_id,agent_id=agent_info.id
+                messages,customer_id=self.customer_id, conversation_id=self.conversation_id, 
+                context=context, company_id=conversation_info.company_id,agent_id=agent_info.id
             )
 
             result=MessageResponse(conversation_id=self.conversation_id,id=message_id,role=MessageRole.ASSISTANT,content=response)

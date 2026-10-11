@@ -1,3 +1,4 @@
+
 from models.schemas.query_schema import OrderFilter
 from langchain_core.tools import tool
 from langgraph.prebuilt import ToolRuntime
@@ -17,4 +18,6 @@ async def search_orders(query:OrderFilter,runtime:ToolRuntime[AgentContext]):
     company_id=runtime.state["company_id"]
     agents_runs_id=runtime.state["agent_runs_id"]
     customer_id=runtime.state["customer_id"]
-    return await runtime.context.query_service.search_for_orders(customer_id=customer_id,company_id=company_id,order_filter=query,agents_runs_id=agents_runs_id)
+    result=await runtime.context.query_service.search_for_orders(customer_id=customer_id,company_id=company_id,
+                                                                 order_filter=query,agents_runs_id=agents_runs_id)
+    return result
