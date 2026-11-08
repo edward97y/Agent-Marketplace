@@ -307,9 +307,12 @@ class OrderActionService(Base):
             order_table_name = order_mapping["table"]
             
             order_id_mapping = order_fields.get("order_id")
-            order_id_column = order_table.c[
-            order_id_mapping["column"]
-            ]
+
+            if not order_id_mapping:
+                raise ValueError(
+                    "Field 'order_id' is not mapped for orders"
+                )
+
             SessionLocal = self.company_db_service.get_sessionmaker(
                 company_id=company_id,
                 url=self.company_url,
@@ -339,6 +342,10 @@ class OrderActionService(Base):
                     customer_id_mapping["column"]
                 ]
 
+                order_id_column = order_table.c[
+                    order_id_mapping["column"]
+                ]
+
                 stmt = (
                     order_table.update()
                     .where(customer_column == customer_id,
@@ -355,7 +362,7 @@ class OrderActionService(Base):
             data={"company_id": company_id, "customer_id": customer_id, "agents_runs_id": agents_runs_id, "order_id": order_id}
             await self.tool_call.save_tool_calls(
                 run_id=agents_runs_id,
-                tool=toolTypes.CREATE_ORDER,
+                tool=toolTypes.CANCEL_ORDER,
                 input=jsonable_encoder(data),
                 output=jsonable_encoder(canceled_orders),
             )

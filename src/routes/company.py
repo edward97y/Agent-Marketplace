@@ -1,6 +1,7 @@
 from fastapi import APIRouter,status,Depends,HTTPException
 from db.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from services.db_services.company_service import CompanyService
 from models.schemas.company_routes_schema import (AddCompany,
                                           GetCompany,DeleteCompany,CompanyResponse)
@@ -47,7 +48,13 @@ async def get_all_agent_info(service:CompanyService=Depends(get_company_service)
 async def delete_agent_by_id(info:DeleteCompany,
                              service:CompanyService=Depends(get_company_service)):
  
-    result=await service.delete_company_by_id(info=info)
+    try:
+        result=await service.delete_company_by_id(info=info)
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="company still has related data (knowledge bases, agents, users, ...). delete them first"
+        )
     if not result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

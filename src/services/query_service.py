@@ -159,6 +159,8 @@ class QueryService(Base):
                                 f"Unsupported filter operator: {operator}"
                             )
 
+                # never send the whole table to the llm
+                stmt = stmt.limit(query.limit)
                 result = await company_db.execute(stmt)
 
                 output = [
@@ -379,6 +381,8 @@ class QueryService(Base):
                     )
 
 
+                # never send the whole table to the llm
+                stmt = stmt.limit((order_filter.limit if order_filter else 10))
                 result = await company_db.execute(stmt)
 
                 order_id_mapping = fields.get("order_id")

@@ -15,10 +15,7 @@ class CompanyMappingService(Base):
 
     async def add_company_mapping(self,data:CreateCompanyMapping)->CompanySchemaMapping:
         self.logger.info("Starting company schema mapping creation")
-        company_schema=CompanySchemaMapping(company_id=data.company_id,mapping={
-        key: value.model_dump(mode="json")
-        for key, value in data.mapping.items()
-    })
+        company_schema=CompanySchemaMapping(company_id=data.company_id,mapping=data.mapping.to_db())
         try:
             self.db.add(company_schema)
             await self.db.commit()
@@ -69,10 +66,7 @@ class CompanyMappingService(Base):
             result = await self.db.execute(stmt)
             mapping = result.scalar_one_or_none()
     
-            mapping_data = {
-                key: value.model_dump(mode="json")
-                for key, value in info.mapping.items()
-            }
+            mapping_data = info.mapping.to_db()
 
             if mapping:
                 mapping.mapping = mapping_data
