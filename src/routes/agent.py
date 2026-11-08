@@ -1,3 +1,4 @@
+from sqlalchemy.exc import IntegrityError
 from fastapi import APIRouter,status,Depends,HTTPException
 from models.schemas.agent_routes_schema import (CreateAgent,GetAllAgent,
                                           GetAgent,AgentResponse,
@@ -52,7 +53,13 @@ async def get_all_agent_info(info:GetAllAgent=Depends(),
 async def delete_agent_by_id(info:DeleteAgent,
                              service:AgentService=Depends(get_agent_service)):
  
-    result=await service.delete_agent_by_id(info=info)
+    try:
+        result=await service.delete_agent_by_id(info=info)
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="agent still has conversations. delete them first"
+        )
     if not result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -68,7 +75,13 @@ async def delete_all_agent_by_company_id(info:DeleteAllAgent,
                                          service:AgentService=Depends(get_agent_service),):
 
     
-        result=await service.delete_all_agent_by_company_id(info=info)
+        try:
+            result=await service.delete_all_agent_by_company_id(info=info)
+        except IntegrityError:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="agent still has conversations. delete them first"
+            )
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from helpers.config import get_settings
 from routes import (agent_router,company_router,
                     company_mapping_router,user_router,
-                    conversation_router,messages_router,company_config_router)
+                    conversation_router,messages_router,company_config_router,
+                    knowledge_base_router,document_router)
 from agent.sales_agent import sales_agent
 from models.enums.db_enum import AgentType
 async def lifespan(app:FastAPI):
@@ -22,7 +23,9 @@ routers=[
         user_router,
         conversation_router,
         company_config_router,
-        messages_router
+        messages_router,
+        knowledge_base_router,
+        document_router
          ]
 
 for router in routers:

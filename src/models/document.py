@@ -23,8 +23,9 @@ class Document(Base):
 
     knowledge_base_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("knowledge_bases.id"),
-        nullable=False
+        ForeignKey("knowledge_bases.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
     )
 
     filename: Mapped[str] = mapped_column(
@@ -42,5 +43,7 @@ class Document(Base):
     )
 
     chunks: Mapped[list["DocumentChunk"]] = relationship(
-        back_populates="document"
+        back_populates="document",
+        cascade="all, delete-orphan",
+        passive_deletes=True
     )

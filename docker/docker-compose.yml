@@ -1,3 +1,8 @@
+# Explicit project name: without it compose uses the folder name ("docker"),
+# which collides with other projects that also keep compose files in docker/
+# (their volumes end up shared, e.g. "docker_postgresdata").
+name: agent-marketplace
+
 services:
   postgres:
     image: pgvector/pgvector:0.8.2-pg18-trixie
@@ -9,12 +14,20 @@ services:
       - POSTGRES_USER=${POSTGRES_USERNAME}
       - POSTGRES_DB=${POSTGRES_Market_DATABASE}
     volumes:
-      - postgresdata:/var/lib/postgresql
+      # pg18+ images keep data in /var/lib/postgresql/<major>/docker
+      - marketplace_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - backend
     restart: always
+
 networks:
-    backend:
-      driver: bridge
+  backend:
+    driver: bridge
+
 volumes:
-     postgresdata:
+  marketplace_postgres_data:

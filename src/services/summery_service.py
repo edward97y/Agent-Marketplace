@@ -68,4 +68,5 @@ Return only the summary.
         response = await self.llm.ainvoke(prompt)
 
         self.logger.info("Conversation summarized successfully")
-        return response.content[0]["text"]
+        # .text works for both gemini (list of content blocks) and the local model (plain string)
+        return response.text

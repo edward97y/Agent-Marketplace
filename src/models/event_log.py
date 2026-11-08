@@ -22,7 +22,7 @@ class EventLog(Base):
 
     run_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("agent_runs.id"),
+        ForeignKey("agent_runs.id", ondelete="CASCADE"),
         nullable=False
     )
 

@@ -15,7 +15,9 @@ class MessageDBService(Base):
     async def get_messages(self, info: GetMessages)->MessageResponse:
         self.logger.info("Retrieving messages for conversation")
         try:
-            stmt = select(Message).where(Message.conversation_id == info.conversation_id)
+            stmt = (select(Message)
+                    .where(Message.conversation_id == info.conversation_id)
+                    .order_by(Message.created_at))
             result = await self.db.execute(stmt)
             messages = result.scalars().all()
             self.logger.info(f"Retrieved {len(messages)} messages")

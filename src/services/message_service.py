@@ -1,5 +1,3 @@
-from test import db
-
 from .base_service import Base
 from models.schemas.messages_routes_schema import (GetMessages,SendMessages,MessageResponse)
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,8 +21,10 @@ from models.schemas.company_db_config_routes_schema import GetCompanyDBConfig
 from .agent_service import AgentServiceManger
 from .company_db_maker_service import CompanyDBServices
 from services.actions_service import OrderActionService
+from services.rag_service import RagService
 class MessageService(Base):
-    def __init__(self,db:AsyncSession,customer_id:UUID,conversation_id:UUID,agents:dict):
+    def __init__(self,db:AsyncSession,conversation_id:UUID,agents:dict,customer_id:UUID|None=None):
+        # customer_id is only needed to send a message; reading history doesn't have one
         super().__init__()
         self.db=db
         self.customer_id=customer_id
@@ -94,7 +94,8 @@ class MessageService(Base):
             company_db_service=CompanyDBServices(),
             company_database_url=company_db_url,
              )
-            context = AgentContext(query_service=query_service, order_action_service=order_service)
+            context = AgentContext(query_service=query_service, order_action_service=order_service,
+                                   rag_service=RagService())
 
             agent_service_manger = AgentServiceManger(agent=agent,db=self.db)
 
@@ -124,3 +125,9 @@ class MessageService(Base):
             )
             raise
     
+
+    async def get_messages(self, info: GetMessages):
+        """conversation history, oldest first"""
+        self.logger.info("Retrieving conversation messages")
+        message_service = MessageDBService(db=self.db)
+        return await message_service.get_messages(info=info)

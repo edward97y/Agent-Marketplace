@@ -1,3 +1,4 @@
+from sqlalchemy.exc import IntegrityError
 from fastapi import APIRouter,status,Depends,HTTPException
 
 from models.schemas.user_routes_schema import (AddUser,GetAllUser
@@ -52,7 +53,13 @@ async def get_all_user_info(info:GetAllUser=Depends(),
 async def delete_user_by_id(info:DeleteUser,
                              service:UserService=Depends(get_user_service)):
  
-    result=await service.delete_user_by_id(info=info)
+    try:
+        result=await service.delete_user_by_id(info=info)
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="user still has conversations. delete them first"
+        )
     if not result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

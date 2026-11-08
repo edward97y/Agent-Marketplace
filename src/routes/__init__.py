@@ -6,3 +6,5 @@ from routes.user import user_router
 from routes.conversation import conversation_router
 from routes.company_db_config import company_config_router
 from routes.messages import messages_router
+from routes.knowledge_base import knowledge_base_router
+from routes.document import document_router
