@@ -8,7 +8,7 @@ logger = get_logger(__name__)
 # Create an asynchronous engine
 logger.info(f"Connecting to database")
 engine = create_async_engine(settings.DATABASE_URL,
-                              echo=True)
+                              echo=settings.DATABASE_ECHO)
 
 # Create a session factory
 logger.info(f"Creating session factory")

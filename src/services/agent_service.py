@@ -1,16 +1,23 @@
 from .base_service import Base
 from uuid import UUID
+from fastapi import BackgroundTasks
 from models.enums.db_enum import MessageRole
 from models.message import Message
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from db.database import async_session
 from .db_services.agent_runs_service import AgentRunService
 from models.enums.db_enum import RunStatus
 from .summery_service import ConversationSummarizer
 from .db_services.memory_service import MemoryService
-from models.schemas.memory_db_schema import GetMemory,UpdateMemory,CreateMemory
+from models.schemas.memory_db_schema import GetMemory,CreateMemory
 from .db_services.messages import MessageDBService
 import time
+
+SUMMARY_THRESHOLD = 20
+_summarizing: set[UUID] = set()
+
+
 class AgentServiceManger(Base):
     def __init__(self,agent,db:AsyncSession):
       super().__init__()
@@ -30,8 +37,8 @@ class AgentServiceManger(Base):
             )
 
         return str(content)
-    
-    
+
+
     async def save_agent_message(self,content:str,conversation_id:UUID):
         self.logger.info("Saving user message")
         message=Message(conversation_id=conversation_id,content=content,
@@ -39,7 +46,6 @@ class AgentServiceManger(Base):
         try:
             self.db.add(message)
             await self.db.commit()
-            await self.db.refresh(message)
             self.logger.info("User message persisted to database")
             return message
         except SQLAlchemyError:
@@ -57,74 +63,94 @@ class AgentServiceManger(Base):
             )
             raise
 
-    async def summarize_if_needed(
-    self,
-    conversation_id: UUID
-    ):
-        
+    async def load_history(self,conversation_id:UUID):
         memory = await self.memory_service.get_memory(
             info=GetMemory(
                 conversation_id=conversation_id
             )
         )
-        previous_summary = memory.summary if memory else None
+        summary = memory.summary if memory else None
         last_message_id = memory.last_message_id if memory else None
         messages = await self.message_service.get_messages_after(
             conversation_id=conversation_id,
             last_message_id=last_message_id
         )
-        if len(messages) < 20:
-            return previous_summary
-        summarizer = ConversationSummarizer()
-        summary = await summarizer.summarize(
-            messages,
-            previous_summary=previous_summary
-        )
+        return summary,messages
 
-        new_last_message_id = messages[-1].id
-        if memory:
-            await self.memory_service.update_memory(
-                info=UpdateMemory(
-                    conversation_id=conversation_id,
-                    summary=summary,
-                    last_message_id=new_last_message_id
-                )
-            )
-        else:
-            await self.memory_service.add_memory(
-                data=CreateMemory(
-                    conversation_id=conversation_id,
-                    summary=summary,
-                    last_message_id=new_last_message_id
-                )
-            )
-        self.logger.info(f"finished the summary")
-        return summary
+    async def summarize_if_needed(
+    self,
+    conversation_id: UUID
+    ):
+        if conversation_id in _summarizing:
+            return
 
-    async def run_agent(self,messages,conversation_id:UUID,customer_id:UUID,
-                        context,company_id:UUID,agent_id:UUID):
-        
-        self.logger.info("start run agent function")
-       
-        agent_service=AgentRunService(db=self.db)
+        _summarizing.add(conversation_id)
 
         try:
+            async with async_session() as db:
+                memory = await MemoryService(db=db).get_memory(
+                    info=GetMemory(
+                        conversation_id=conversation_id
+                    )
+                )
+                previous_summary = memory.summary if memory else None
+                last_message_id = memory.last_message_id if memory else None
+                messages = await MessageDBService(db=db).get_messages_after(
+                    conversation_id=conversation_id,
+                    last_message_id=last_message_id
+                )
+
+            if len(messages) < SUMMARY_THRESHOLD:
+                return
+
+            summarizer = ConversationSummarizer()
+            summary = await summarizer.summarize(
+                messages,
+                previous_summary=previous_summary
+            )
+
+            async with async_session() as db:
+                await MemoryService(db=db).upsert_memory(
+                    data=CreateMemory(
+                        conversation_id=conversation_id,
+                        summary=summary,
+                        last_message_id=messages[-1].id
+                    )
+                )
+            self.logger.info(f"finished the summary")
+
+        except Exception:
+            self.logger.error("error while summarizing the conversation",exc_info=True)
+
+        finally:
+            _summarizing.discard(conversation_id)
+
+    async def run_agent(self,conversation_id:UUID,customer_id:UUID,
+                        context,company_id:UUID,agent_id:UUID,
+                        background_tasks:BackgroundTasks|None=None):
+
+        self.logger.info("start run agent function")
+
+        agent_service=AgentRunService(db=self.db)
+        agent_runs=None
+
+        try:
+            start = time.perf_counter()
+
+            summary,history = await self.load_history(conversation_id=conversation_id)
+            messages = await self.to_langchain_messages(messages=history)
+
+            self.logger.info( f"[TIMING] load_history: "f"{time.perf_counter() - start:.3f}s")
+
             start = time.perf_counter()
             agent_runs=await agent_service.save_agent_runs_by_conversation_id(conversation_id=conversation_id,
                                                                           agent_id=agent_id,
                                                                           status=RunStatus.RUNNING)
-            
+
             self.logger.info( f"[TIMING] save_agent_run: "f"{time.perf_counter() - start:.3f}s")
 
             start = time.perf_counter()
 
-            summary = await self.summarize_if_needed(conversation_id=conversation_id)
-
-            self.logger.info( f"[TIMING] summarize_if_needed: "f"{time.perf_counter() - start:.3f}s")
-
-
-            start = time.perf_counter()
-            
             result=await self.agent.ainvoke( {
             "messages": messages,
             "company_id":company_id,
@@ -133,11 +159,11 @@ class AgentServiceManger(Base):
             "summary": summary
             },
             context=context,
-           
+
             )
 
             self.logger.info( f"[TIMING] agent.ainvoke: "f"{time.perf_counter() - start:.3f}s")
-            
+
             self.logger.info("saving agent response")
             start = time.perf_counter()
 
@@ -154,15 +180,22 @@ class AgentServiceManger(Base):
                 content=content
             )
             self.logger.info( f"[TIMING] save_agent_message: "f"{time.perf_counter() - start:.3f}s")
-            
+
             self.logger.info("finish run agent function")
             start = time.perf_counter()
             agent_runs_updated=await agent_service.update_agent_runs_by_conversation_id(agent_runs=agent_runs,status=RunStatus.COMPLETED)
             self.logger.info( f"[TIMING] update_agent_runs: "f"{time.perf_counter() - start:.3f}s")
-                        
+
+            if len(history) + 1 >= SUMMARY_THRESHOLD:
+                if background_tasks is not None:
+                    background_tasks.add_task(self.summarize_if_needed,conversation_id)
+                else:
+                    await self.summarize_if_needed(conversation_id=conversation_id)
+
             return content,message.id
         except Exception:
             self.logger.error("error while running the agent",exc_info=True)
-            agent_runs_updated=await agent_service.update_agent_runs_by_conversation_id(agent_runs=agent_runs,status=RunStatus.FAILED)
-                        
+            if agent_runs is not None:
+                agent_runs_updated=await agent_service.update_agent_runs_by_conversation_id(agent_runs=agent_runs,status=RunStatus.FAILED)
+
             raise

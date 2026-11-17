@@ -16,7 +16,6 @@ class ToolDBService(Base):
             tool=ToolCall(run_id=run_id,tool=tool,input=input,output=output)
             self.db.add(tool)
             await self.db.commit()
-            await self.db.refresh(tool)
             self.logger.info("Finish Updating tool call info")
             return tool
         except SQLAlchemyError:

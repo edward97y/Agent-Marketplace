@@ -1,8 +1,11 @@
 from ..base_service import Base
+from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.conversation import Conversation
+from models.agent import Agent
+from models.company_db_config import CompanyDBConfig
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import select,delete
+from sqlalchemy import select,delete,and_
 
 from models.schemas.conversation_routes_schema import (CreateConversation,GetAgentConversation,
                                                GetConversation,GetUserConversation,
@@ -89,6 +92,39 @@ class ConversationService(Base):
                     except Exception:
                         self.logger.error("Failed to retrieve conversation by ID", exc_info=True)
                         raise
+
+    async def get_conversation_context(self,conversation_id:UUID)->tuple[Conversation,Agent,CompanyDBConfig]:
+                    self.logger.info("Retrieving conversation, agent and company DB config")
+
+                    try:
+
+                        stmt=(
+                            select(Conversation,Agent,CompanyDBConfig)
+                            .outerjoin(Agent,and_(Agent.id==Conversation.agent_id,
+                                                  Agent.company_id==Conversation.company_id))
+                            .outerjoin(CompanyDBConfig,CompanyDBConfig.company_id==Conversation.company_id)
+                            .where(Conversation.id==conversation_id)
+                        )
+
+                        result=await self.db.execute(stmt)
+                        row=result.first()
+
+                    except SQLAlchemyError:
+                        self.logger.error("Failed to retrieve conversation context due to a database error", exc_info=True)
+                        raise
+
+                    if row is None:
+                        raise ValueError("Conversation not found")
+
+                    conversation,agent,company_config=row
+
+                    if agent is None:
+                        raise ValueError("Agent not found for this conversation")
+
+                    if company_config is None:
+                        raise ValueError("Company database config not found")
+
+                    return conversation,agent,company_config
 
     async def delete_conversation_by_id(self,info:DeleteConversation):
                     self.logger.info("Deleting conversation by ID")

@@ -3,7 +3,7 @@ from uuid import uuid4, UUID
 from datetime import datetime
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Text, func, DateTime, ForeignKey, Enum
+from sqlalchemy import Text, func, DateTime, ForeignKey, Enum, Index
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from .enums import MessageRole
 
@@ -50,4 +50,12 @@ class Message(Base):
         "Memory",
         back_populates="last_message",
         uselist=False,
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_messages_conversation_id_created_at",
+            "conversation_id",
+            "created_at"
+        ),
     )
