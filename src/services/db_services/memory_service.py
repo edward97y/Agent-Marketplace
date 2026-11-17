@@ -1,6 +1,7 @@
 from ..base_service import Base
 from models.schemas.memory_db_schema import (CreateMemory,GetMemory,UpdateMemory)
 from sqlalchemy import select,update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.memory import Memory
 from sqlalchemy.exc import SQLAlchemyError
@@ -47,6 +48,24 @@ class MemoryService(Base):
 
         except Exception:
             self.logger.error("Failed to retrieve memory", exc_info=True)
+            raise
+
+    async def upsert_memory(self,data:CreateMemory)->None:
+        self.logger.info("Upserting memory")
+
+        try:
+            stmt=insert(Memory).values(conversation_id=data.conversation_id,summary=data.summary,
+                                       last_message_id=data.last_message_id)
+            stmt=stmt.on_conflict_do_update(
+                index_elements=[Memory.conversation_id],
+                set_={"summary":stmt.excluded.summary,"last_message_id":stmt.excluded.last_message_id}
+            )
+            await self.db.execute(stmt)
+            await self.db.commit()
+
+        except SQLAlchemyError:
+            await self.db.rollback()
+            self.logger.error("Failed to upsert memory due to a database error", exc_info=True)
             raise
 
     async def update_memory(self,info:UpdateMemory)->Memory| None:

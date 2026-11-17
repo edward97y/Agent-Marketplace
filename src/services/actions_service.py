@@ -1,7 +1,7 @@
 from uuid import UUID
 from datetime import datetime
 
-from sqlalchemy import MetaData, Table, select
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,11 +22,12 @@ class OrderActionService(Base):
         db: AsyncSession,
         company_db_service: CompanyDBServices,
         company_database_url: str,
+        mapping: SchemaMappingService | None = None,
     ):
         super().__init__()
 
         self.db = db
-        self.mapping = SchemaMappingService(db=db)
+        self.mapping = mapping or SchemaMappingService(db=db)
         self.company_db_service = company_db_service
         self.company_url = company_database_url
         self.tool_call = ToolDBService(db=db)
@@ -74,47 +75,37 @@ class OrderActionService(Base):
             customer_fields = customer_mapping["fields"]
             customer_table_name = customer_mapping["table"]
 
-            SessionLocal = self.company_db_service.get_sessionmaker(
+            SessionLocal = await self.company_db_service.get_sessionmaker(
                 company_id=company_id,
                 url=self.company_url,
             )
 
             async with SessionLocal() as company_db:
 
-                metadata = MetaData()
                 connection = await company_db.connection()
 
-
-                order_table = await connection.run_sync(
-                    lambda conn: Table(
-                        order_table_name,
-                        metadata,
-                        autoload_with=conn,
-                    )
+                order_table = await self.company_db_service.get_table(
+                    company_id=company_id,
+                    table_name=order_table_name,
+                    connection=connection,
                 )
 
-                item_table = await connection.run_sync(
-                    lambda conn: Table(
-                        item_table_name,
-                        metadata,
-                        autoload_with=conn,
-                    )
+                item_table = await self.company_db_service.get_table(
+                    company_id=company_id,
+                    table_name=item_table_name,
+                    connection=connection,
                 )
 
-                product_table = await connection.run_sync(
-                    lambda conn: Table(
-                        product_table_name,
-                        metadata,
-                        autoload_with=conn,
-                    )
+                product_table = await self.company_db_service.get_table(
+                    company_id=company_id,
+                    table_name=product_table_name,
+                    connection=connection,
                 )
 
-                customer_table = await connection.run_sync(
-                    lambda conn: Table(
-                        customer_table_name,
-                        metadata,
-                        autoload_with=conn,
-                    )
+                customer_table = await self.company_db_service.get_table(
+                    company_id=company_id,
+                    table_name=customer_table_name,
+                    connection=connection,
                 )
                 customer_id_mapping = order_fields.get("customer_id")
 
@@ -174,18 +165,25 @@ class OrderActionService(Base):
                     product_id_mapping["column"]
                 ]
 
+                requested_ids = list({item.product_id for item in data.items})
+
+                product_result = await company_db.execute(
+                    select(product_table).where(
+                        product_id_column.in_(requested_ids)
+                    )
+                )
+
+                products = {
+                    str(row[product_id_mapping["column"]]): row
+                    for row in product_result.mappings().all()
+                }
+
                 resolved_items = []
                 total_amount = 0
 
                 for item in data.items:
 
-                    stmt = select(product_table).where(
-                        product_id_column == item.product_id
-                    )
-
-                    result = await company_db.execute(stmt)
-
-                    product = result.mappings().first()
+                    product = products.get(str(item.product_id))
 
                     if not product:
                         raise ValueError(
@@ -235,21 +233,18 @@ class OrderActionService(Base):
                 ]
 
 
-                for item in resolved_items:
-
-                    item_values = {
+                item_rows = [
+                    {
                         item_fields["order_id"]["column"]: order_id,
                         item_fields["product_id"]["column"]: item["product_id"],
                         item_fields["quantity"]["column"]: item["quantity"],
                         item_fields["unit_price"]["column"]: item["unit_price"],
                         item_fields["subtotal"]["column"]: item["subtotal"],
                     }
+                    for item in resolved_items
+                ]
 
-                    item_stmt = item_table.insert().values(
-                        **item_values
-                    )
-
-                    await company_db.execute(item_stmt)
+                await company_db.execute(item_table.insert(), item_rows)
 
                
 
@@ -313,22 +308,19 @@ class OrderActionService(Base):
                     "Field 'order_id' is not mapped for orders"
                 )
 
-            SessionLocal = self.company_db_service.get_sessionmaker(
+            SessionLocal = await self.company_db_service.get_sessionmaker(
                 company_id=company_id,
                 url=self.company_url,
             )
 
             async with SessionLocal() as company_db:
 
-                metadata = MetaData()
                 connection = await company_db.connection()
 
-                order_table = await connection.run_sync(
-                    lambda conn: Table(
-                        order_table_name,
-                        metadata,
-                        autoload_with=conn,
-                    )
+                order_table = await self.company_db_service.get_table(
+                    company_id=company_id,
+                    table_name=order_table_name,
+                    connection=connection,
                 )
 
                 customer_id_mapping = order_fields.get("customer_id")
