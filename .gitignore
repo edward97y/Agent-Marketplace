@@ -6,3 +6,5 @@ __pycache__/
 src/test
 
 whisper/data
+whisper/content
+whisper/models
