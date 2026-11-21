@@ -3,8 +3,8 @@
 WORKERS ?= 4
 
 install:
-	uv sync 
-	@echo "setup complete, run 'make run' to start the server"
+	uv sync
+	@echo "Setup complete"
 
 lint:
 	uv run ruff check .
