@@ -1,5 +1,4 @@
 from uuid import UUID
-from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -157,7 +156,7 @@ class OrderActionService(Base):
 
                 if not customer:
                     raise ValueError(
-                        f"Customer not found"
+                        "Customer not found"
                     )
 
 
@@ -187,12 +186,12 @@ class OrderActionService(Base):
 
                     if not product:
                         raise ValueError(
-                            f"Product not found"
+                            "Product not found"
                         )
 
                     if not product[stock_mapping["column"]]:
                         raise ValueError(
-                            f"Product is not available"
+                            "Product is not available"
                         )
 
                     unit_price = product[price_mapping["column"]]
@@ -360,7 +359,7 @@ class OrderActionService(Base):
             )
 
             self.logger.info(
-                f"Orders canceled successfully for customer"
+                "Orders canceled successfully for customer"
             )
             return canceled_orders
 

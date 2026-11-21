@@ -1,8 +1,7 @@
-from datetime import date, datetime
+from datetime import datetime
 from pydantic import BaseModel,Field,field_validator,model_validator
 from typing import Any
 from models.enums import EntityType,FilterOperator
-from uuid import UUID
 # small/local models often write the operator in words or symbols
 OPERATOR_ALIASES = {
     "equals": "eq", "equal": "eq", "is": "eq", "==": "eq", "=": "eq",

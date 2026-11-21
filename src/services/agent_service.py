@@ -51,14 +51,14 @@ class AgentServiceManger(Base):
         except SQLAlchemyError:
             await self.db.rollback()
             self.logger.error(
-                f"Database error saving user message )",
+                "Database error saving user message )",
                 exc_info=True,
             )
             raise
 
         except Exception:
             self.logger.error(
-                f"Unexpected error saving user message ()",
+                "Unexpected error saving user message ()",
                 exc_info=True,
             )
             raise
@@ -117,7 +117,7 @@ class AgentServiceManger(Base):
                         last_message_id=messages[-1].id
                     )
                 )
-            self.logger.info(f"finished the summary")
+            self.logger.info("finished the summary")
 
         except Exception:
             self.logger.error("error while summarizing the conversation",exc_info=True)
@@ -183,7 +183,7 @@ class AgentServiceManger(Base):
 
             self.logger.info("finish run agent function")
             start = time.perf_counter()
-            agent_runs_updated=await agent_service.update_agent_runs_by_conversation_id(agent_runs=agent_runs,status=RunStatus.COMPLETED)
+            await agent_service.update_agent_runs_by_conversation_id(agent_runs=agent_runs,status=RunStatus.COMPLETED)
             self.logger.info( f"[TIMING] update_agent_runs: "f"{time.perf_counter() - start:.3f}s")
 
             if len(history) + 1 >= SUMMARY_THRESHOLD:
@@ -196,6 +196,6 @@ class AgentServiceManger(Base):
         except Exception:
             self.logger.error("error while running the agent",exc_info=True)
             if agent_runs is not None:
-                agent_runs_updated=await agent_service.update_agent_runs_by_conversation_id(agent_runs=agent_runs,status=RunStatus.FAILED)
+                await agent_service.update_agent_runs_by_conversation_id(agent_runs=agent_runs,status=RunStatus.FAILED)
 
             raise
