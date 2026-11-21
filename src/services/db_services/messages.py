@@ -44,7 +44,6 @@ class MessageDBService(Base):
             try:
                 self.db.add(message)
                 await self.db.commit()
-                await self.db.refresh(message)
                 self.logger.info("User message persisted to database")
                 return message
             except SQLAlchemyError:
@@ -93,32 +92,22 @@ class MessageDBService(Base):
 ) -> list[Message]:
         self.logger.info("Retrieving messages after last message")
 
-        if last_message_id is None:
-            self.logger.info(f"Retrieving all messages for conversation")
-            stmt = (
-                select(Message)
-                .where(
-                    Message.conversation_id == conversation_id
-                )
-                .order_by(Message.created_at.asc())
+        stmt = (
+            select(Message)
+            .where(
+                Message.conversation_id == conversation_id
             )
-    
-        else:
-            self.logger.info(f"Retrieving messages after last message ID")
-            last_message = await self.db.get(
-                Message,
-                last_message_id
+            .order_by(Message.created_at.asc())
+        )
+
+        if last_message_id is not None:
+            last_created_at = (
+                select(Message.created_at)
+                .where(Message.id == last_message_id)
+                .scalar_subquery()
             )
-    
-            stmt = (
-                select(Message)
-                .where(
-                    Message.conversation_id == conversation_id,
-                    Message.created_at > last_message.created_at
-                )
-                .order_by(Message.created_at.asc())
-            )
-    
+            stmt = stmt.where(Message.created_at > last_created_at)
+
         result = await self.db.execute(stmt)
         self.logger.info(f"Finished retrieving messages")
         return result.scalars().all()

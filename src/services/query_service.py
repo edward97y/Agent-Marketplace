@@ -1,10 +1,8 @@
-from dataclasses import fields
-
 from .base_service import Base
 from uuid import UUID
 from models.enums import FilterOperator
 from .schema_mapping_service import SchemaMappingService
-from sqlalchemy import select,MetaData, Table,func
+from sqlalchemy import select,Table,func
 from sqlalchemy.exc import SQLAlchemyError
 from models.schemas.query_schema import Query,OrderFilter
 from .db_services.tool_calls_service import ToolDBService
@@ -15,12 +13,23 @@ from .company_db_maker_service import CompanyDBServices
 from fastapi.encoders import jsonable_encoder
 from models.enums import EntityType
 class QueryService(Base):
-    def __init__(self,db:AsyncSession,company_db_service:CompanyDBServices,company_database_url:str):
+    def __init__(self,db:AsyncSession,company_db_service:CompanyDBServices,company_database_url:str,
+                 mapping:SchemaMappingService|None=None):
         super().__init__()
-        self.mapping=SchemaMappingService(db=db)
+        self.mapping=mapping or SchemaMappingService(db=db)
         self.company_db_service=company_db_service
         self.db=db
         self.company_url=company_database_url
+
+    def _mapped_columns(self, table: Table, fields: dict):
+        columns = [
+            table.c[field_mapping["column"]].label(field_name)
+            for field_name, field_mapping in fields.items()
+            if field_mapping
+            and field_mapping.get("column")
+            and field_mapping["column"] in table.c
+        ]
+        return columns or [table]
 
     def _normalize_value(self, value, field_type):
         if field_type == "integer":
@@ -64,25 +73,22 @@ class QueryService(Base):
             table_name = entity_mapping["table"]
             fields = entity_mapping["fields"]
 
-            SessionLocal = self.company_db_service.get_sessionmaker(
+            SessionLocal = await self.company_db_service.get_sessionmaker(
                 company_id=company_id,
                 url=self.company_url
             )
 
             async with SessionLocal() as company_db:
 
-                metadata = MetaData()
                 connection = await company_db.connection()
 
-                table = await connection.run_sync(
-                    lambda conn: Table(
-                        table_name,
-                        metadata,
-                        autoload_with=conn
-                    )
+                table = await self.company_db_service.get_table(
+                    company_id=company_id,
+                    table_name=table_name,
+                    connection=connection
                 )
 
-                stmt = select(table)
+                stmt = select(*self._mapped_columns(table, fields))
 
                 if query.filters:
 
@@ -246,25 +252,27 @@ class QueryService(Base):
             self.logger.info(
                 f"CUSTOMER ID MAPPING: {fields.get('customer_id')}"
             )
-            SessionLocal = self.company_db_service.get_sessionmaker(
+            if not fields.get("order_id"):
+                raise ValueError(
+                    "Field 'order_id' is not mapped for orders"
+                )
+
+            SessionLocal = await self.company_db_service.get_sessionmaker(
                 company_id=company_id,
                 url=self.company_url,
             )
 
             async with SessionLocal() as company_db:
 
-                metadata = MetaData()
                 connection = await company_db.connection()
 
-                table = await connection.run_sync(
-                    lambda conn: Table(
-                        table_name,
-                        metadata,
-                        autoload_with=conn,
-                    )
+                table = await self.company_db_service.get_table(
+                    company_id=company_id,
+                    table_name=table_name,
+                    connection=connection,
                 )
 
-                stmt = select(table)
+                stmt = select(*self._mapped_columns(table, fields))
 
                 customer_mapping = fields.get("customer_id")
 
@@ -385,23 +393,10 @@ class QueryService(Base):
                 stmt = stmt.limit((order_filter.limit if order_filter else 10))
                 result = await company_db.execute(stmt)
 
-                order_id_mapping = fields.get("order_id")
-
-                if not order_id_mapping:
-                    raise ValueError(
-                        "Field 'order_id' is not mapped for orders"
-                    )
-                
-                order_id_column = order_id_mapping["column"]
-                
-                output = []
-                
-                for row in result.mappings().all():
-                    order = dict(row)
-                
-                    order["order_id"] = order[order_id_column]
-                
-                    output.append(order)
+                output = [
+                    dict(row)
+                    for row in result.mappings().all()
+                ]
 
 
             output = jsonable_encoder(output)

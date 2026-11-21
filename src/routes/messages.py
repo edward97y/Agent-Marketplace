@@ -1,4 +1,4 @@
-from fastapi import APIRouter,status,Depends,HTTPException,Request
+from fastapi import APIRouter,status,Depends,HTTPException,Request,BackgroundTasks
 from db.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from services.message_service import MessageService
@@ -9,11 +9,11 @@ messages_router=APIRouter(prefix="/messages",tags=["messages"])
 
 
 @messages_router.post("/send/message",response_model=MessageResponse,status_code=status.HTTP_200_OK)
-async def send_messages(data:SendMessages,request:Request,
+async def send_messages(data:SendMessages,request:Request,background_tasks:BackgroundTasks,
                          db:AsyncSession=Depends(get_db),):
     agents=request.app.state.agents
     service=MessageService(db=db,customer_id=data.customer_id,conversation_id=data.conversation_id,agents=agents)
-    result=await service.send_message(content=data.content)
+    result=await service.send_message(content=data.content,background_tasks=background_tasks)
     return result
 
 @messages_router.get("/messages",response_model=list[MessageResponse],status_code=status.HTTP_200_OK)

@@ -6,13 +6,16 @@ from routes import (agent_router,company_router,
                     knowledge_base_router,document_router)
 from agent.sales_agent import sales_agent
 from models.enums.db_enum import AgentType
+from services.company_db_maker_service import company_db_services
+from db.database import engine
 async def lifespan(app:FastAPI):
     settings=get_settings()
     app.state.agents = {
     AgentType.SALES: sales_agent,
 }
     yield
-    pass
+    await company_db_services.close_all()
+    await engine.dispose()
 
 app=FastAPI(lifespan=lifespan)
 
