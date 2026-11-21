@@ -3,7 +3,7 @@
 WORKERS ?= 4
 
 install:
-	uv sync &&\
+	uv sync 
 	@echo "setup complete, run 'make run' to start the server"
 
 lint:
