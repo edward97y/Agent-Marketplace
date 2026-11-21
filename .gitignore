@@ -3,4 +3,7 @@ UML Diagram
 alembic.ini
 .env
 __pycache__/
-src/test_db
+
+whisper/data
+whisper/content
+whisper/models

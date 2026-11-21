@@ -1,0 +1,32 @@
+{
+  "language": "ar_eg",
+  "split": "test",
+  "n_evaluated": 427,
+  "models": {
+    "tiny": {
+      "model_size": "tiny",
+      "wer_percent": 67.72306192101414,
+      "cer_percent": 26.844778192551438,
+      "latency_mean_ms": 1855.691130772836,
+      "latency_median_ms": 1427.8499179999926,
+      "latency_p95_ms": 3848.036386699632,
+      "latency_total_s": 792.3801128400011,
+      "audio_total_s": 4683.1,
+      "rtf_mean": 0.17986769116823523,
+      "rtf_overall": 0.16919991305759027
+    },
+    "small": {
+      "model_size": "small",
+      "wer_percent": 31.923451974646515,
+      "cer_percent": 9.150099835055126,
+      "latency_mean_ms": 7705.655218147576,
+      "latency_median_ms": 7457.9139960005705,
+      "latency_p95_ms": 10816.008968300775,
+      "latency_total_s": 3290.314778149015,
+      "audio_total_s": 4683.1,
+      "rtf_mean": 0.7515939295569829,
+      "rtf_overall": 0.7025933202684151
+    }
+  },
+  "hardware": "cpu intel core i5-6200U"
+}
