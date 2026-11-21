@@ -19,7 +19,7 @@ async def create_company(data:CreateCompanyMapping,
     return result
 
 @company_mapping_router.post("/update",response_model=CompanyMappingResponse,status_code=status.HTTP_201_CREATED)
-async def create_company(info:UpdateCompanyMapping,
+async def update_company_mapping(info:UpdateCompanyMapping,
                          service:CompanyMappingService=Depends(get_company_mapping_service)):
 
     result=await service.update_company_mapping_by_id(info=info)

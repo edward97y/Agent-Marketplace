@@ -1,6 +1,5 @@
 from pydantic import BaseModel, ConfigDict
 from uuid import UUID
-from datetime import datetime
 
 
 class CreateMemory(BaseModel):

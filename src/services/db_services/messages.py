@@ -25,14 +25,14 @@ class MessageDBService(Base):
 
         except SQLAlchemyError:
             self.logger.error(
-                f"Database error retrieving messages ",
+                "Database error retrieving messages ",
                 exc_info=True,
             )
             raise
 
         except Exception:
             self.logger.error(
-                f"Unexpected error retrieving messages",
+                "Unexpected error retrieving messages",
                 exc_info=True,
             )
             raise
@@ -49,14 +49,14 @@ class MessageDBService(Base):
             except SQLAlchemyError:
                 await self.db.rollback()
                 self.logger.error(
-                    f"Database error saving user message ",
+                    "Database error saving user message ",
                     exc_info=True,
                 )
                 raise
     
             except Exception:
                 self.logger.error(
-                    f"Unexpected error saving user message ",
+                    "Unexpected error saving user message ",
                     exc_info=True,
                 )
                 raise
@@ -109,5 +109,5 @@ class MessageDBService(Base):
             stmt = stmt.where(Message.created_at > last_created_at)
 
         result = await self.db.execute(stmt)
-        self.logger.info(f"Finished retrieving messages")
+        self.logger.info("Finished retrieving messages")
         return result.scalars().all()

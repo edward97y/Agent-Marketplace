@@ -6,12 +6,12 @@ settings = get_settings()
 logger = get_logger(__name__)
 
 # Create an asynchronous engine
-logger.info(f"Connecting to database")
+logger.info("Connecting to database")
 engine = create_async_engine(settings.DATABASE_URL,
                               echo=settings.DATABASE_ECHO)
 
 # Create a session factory
-logger.info(f"Creating session factory")
+logger.info("Creating session factory")
 async_session = sessionmaker(
     bind=engine,
     class_=AsyncSession,

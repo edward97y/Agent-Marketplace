@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-from helpers.config import get_settings
 from routes import (agent_router,company_router,
                     company_mapping_router,user_router,
                     conversation_router,messages_router,company_config_router,
@@ -9,7 +8,6 @@ from models.enums.db_enum import AgentType
 from services.company_db_maker_service import company_db_services
 from db.database import engine
 async def lifespan(app:FastAPI):
-    settings=get_settings()
     app.state.agents = {
     AgentType.SALES: sales_agent,
 }
