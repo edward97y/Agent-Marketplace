@@ -7,3 +7,4 @@ __pycache__/
 whisper/data
 whisper/content
 whisper/models
+src/test_db
